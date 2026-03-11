@@ -42,12 +42,11 @@ if missing:
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, SCRIPT_DIR)
 
+import content_extractor
 import fetch_client
 import html_sanitizer
-import content_extractor
 import injection_guard
 import output_formatter
-
 
 # ---------------------------------------------------------------------------
 # CLI

@@ -39,7 +39,7 @@ def format_output(url, fetch_timestamp, risk_result, sanitize_tally, salted_body
     if max_words is not None:
         words = body.split()
         if len(words) > max_words:
-            body = " ".join(words[:max_words]) + "\n\n[Truncated at {} words]".format(max_words)
+            body = " ".join(words[:max_words]) + f"\n\n[Truncated at {max_words} words]"
 
     # Injection match details (if any)
     details = ""

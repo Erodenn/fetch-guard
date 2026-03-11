@@ -1,0 +1,47 @@
+[project]
+name = "fetch-skill"
+version = "0.1.0"
+description = "Claude Code skill for LLM-ready web fetching"
+requires-python = ">=3.9"
+
+dependencies = [
+    "requests",
+    "beautifulsoup4",
+    "trafilatura",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "ruff",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["fetch/scripts"]
+
+[tool.ruff]
+target-version = "py39"
+line-length = 120
+src = ["fetch/scripts", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "F",    # pyflakes
+    "W",    # pycodestyle warnings
+    "I",    # isort
+    "UP",   # pyupgrade
+    "N",    # pep8-naming
+    "S",    # flake8-bandit (security)
+    "B",    # flake8-bugbear
+    "A",    # flake8-builtins
+    "C4",   # flake8-comprehensions
+    "SIM",  # flake8-simplify
+    "PIE",  # flake8-pie
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["S101"]  # allow assert in tests
+"fetch/scripts/fetch.py" = ["E402"]  # imports after sys.path setup
+"fetch/scripts/injection_guard.py" = ["E402"]  # imports after sys.path setup

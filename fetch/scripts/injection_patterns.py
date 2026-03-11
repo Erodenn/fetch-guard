@@ -28,7 +28,10 @@ PATTERNS = [
     # Ignore-previous patterns
     (
         "ignore_previous",
-        re.compile(r"ignore\s+(?:all\s+)?(?:previous|prior|above|earlier)\s+(?:instructions?|prompts?|context)", re.IGNORECASE),
+        re.compile(
+            r"ignore\s+(?:all\s+)?(?:previous|prior|above|earlier)\s+(?:instructions?|prompts?|context)",
+            re.IGNORECASE,
+        ),
         "high",
     ),
     (
