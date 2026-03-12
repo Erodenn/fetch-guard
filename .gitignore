@@ -35,4 +35,7 @@ Desktop.ini
 .DS_Store
 
 # MCP local config
-.mcp.local.json
+.mcp.json
+
+# Plans / scope docs
+plans/
