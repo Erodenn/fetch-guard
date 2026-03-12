@@ -96,15 +96,13 @@ def sanitize(html):
 
     # Remove aria-hidden elements
     for element in list(soup.find_all(attrs={"aria-hidden": "true"})):
-        if not _is_decomposed(element):
-            element.decompose()
-            tally["hidden_elements"] += 1
+        element.decompose()
+        tally["hidden_elements"] += 1
 
     # Remove <noscript> tags
     for element in list(soup.find_all("noscript")):
-        if not _is_decomposed(element):
-            element.decompose()
-            tally["hidden_elements"] += 1
+        element.decompose()
+        tally["hidden_elements"] += 1
 
     cleaned_html = str(soup)
 

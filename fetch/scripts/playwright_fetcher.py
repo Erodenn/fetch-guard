@@ -1,5 +1,7 @@
 """Playwright-based JS rendering — headless Chromium fetch for JavaScript-heavy pages."""
 
+from fetch_client import _error_result
+
 
 def fetch(url, timeout=180):
     """Fetch a URL using headless Chromium via Playwright.
@@ -14,15 +16,11 @@ def fetch(url, timeout=180):
         from playwright.sync_api import TimeoutError as PWTimeoutError
         from playwright.sync_api import sync_playwright
     except ImportError:
-        return {
-            "status_code": None,
-            "html": None,
-            "final_url": url,
-            "error": (
-                "Playwright is not installed. "
-                "Install with: pip install playwright && playwright install chromium"
-            ),
-        }
+        return _error_result(
+            url,
+            "Playwright is not installed. "
+            "Install with: pip install playwright && playwright install chromium",
+        )
 
     timeout_ms = timeout * 1000
 
@@ -51,16 +49,6 @@ def fetch(url, timeout=180):
                 "error": None,
             }
     except PWTimeoutError:
-        return {
-            "status_code": None,
-            "html": None,
-            "final_url": url,
-            "error": f"Playwright navigation timed out after {timeout} seconds",
-        }
+        return _error_result(url, f"Playwright navigation timed out after {timeout} seconds")
     except Exception as e:
-        return {
-            "status_code": None,
-            "html": None,
-            "final_url": url,
-            "error": f"Playwright error: {e}",
-        }
+        return _error_result(url, f"Playwright error: {e}")

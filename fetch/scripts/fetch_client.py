@@ -10,6 +10,16 @@ BROWSER_USER_AGENT = (
 )
 
 
+def _error_result(url, error):
+    """Build a standard error result dict."""
+    return {
+        "status_code": None,
+        "html": None,
+        "final_url": url,
+        "error": error,
+    }
+
+
 def fetch(url, timeout=180, user_agent=None):
     """Fetch a URL and return the result.
 
@@ -41,23 +51,8 @@ def fetch(url, timeout=180, user_agent=None):
             "error": None,
         }
     except requests.exceptions.Timeout:
-        return {
-            "status_code": None,
-            "html": None,
-            "final_url": url,
-            "error": f"Request timed out after {timeout} seconds",
-        }
+        return _error_result(url, f"Request timed out after {timeout} seconds")
     except requests.exceptions.ConnectionError as e:
-        return {
-            "status_code": None,
-            "html": None,
-            "final_url": url,
-            "error": f"Connection error: {e}",
-        }
+        return _error_result(url, f"Connection error: {e}")
     except requests.exceptions.RequestException as e:
-        return {
-            "status_code": None,
-            "html": None,
-            "final_url": url,
-            "error": str(e),
-        }
+        return _error_result(url, str(e))

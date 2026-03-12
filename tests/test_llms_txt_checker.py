@@ -42,15 +42,11 @@ class TestCheck:
 
     @patch("llms_txt_checker.requests")
     def test_available(self, mock_requests):
-        head_resp = MagicMock()
-        head_resp.status_code = 200
-
         get_resp = MagicMock()
         get_resp.status_code = 200
         get_resp.text = "# llms.txt\nThis site is about testing."
         get_resp.apparent_encoding = "utf-8"
 
-        mock_requests.head.return_value = head_resp
         mock_requests.get.return_value = get_resp
         mock_requests.RequestException = Exception
 
@@ -61,10 +57,10 @@ class TestCheck:
 
     @patch("llms_txt_checker.requests")
     def test_not_found(self, mock_requests):
-        head_resp = MagicMock()
-        head_resp.status_code = 404
+        get_resp = MagicMock()
+        get_resp.status_code = 404
 
-        mock_requests.head.return_value = head_resp
+        mock_requests.get.return_value = get_resp
         mock_requests.RequestException = Exception
 
         result = llms_txt_checker.check("https://example.com")
@@ -72,20 +68,8 @@ class TestCheck:
         assert result["content"] is None
 
     @patch("llms_txt_checker.requests")
-    def test_head_timeout(self, mock_requests):
-        mock_requests.head.side_effect = Exception("timeout")
-        mock_requests.RequestException = Exception
-
-        result = llms_txt_checker.check("https://example.com")
-        assert result["available"] is False
-
-    @patch("llms_txt_checker.requests")
-    def test_get_fails_after_head_succeeds(self, mock_requests):
-        head_resp = MagicMock()
-        head_resp.status_code = 200
-
-        mock_requests.head.return_value = head_resp
-        mock_requests.get.side_effect = Exception("connection reset")
+    def test_request_error(self, mock_requests):
+        mock_requests.get.side_effect = Exception("timeout")
         mock_requests.RequestException = Exception
 
         result = llms_txt_checker.check("https://example.com")
@@ -93,15 +77,11 @@ class TestCheck:
 
     @patch("llms_txt_checker.requests")
     def test_empty_content(self, mock_requests):
-        head_resp = MagicMock()
-        head_resp.status_code = 200
-
         get_resp = MagicMock()
         get_resp.status_code = 200
         get_resp.text = "   "
         get_resp.apparent_encoding = "utf-8"
 
-        mock_requests.head.return_value = head_resp
         mock_requests.get.return_value = get_resp
         mock_requests.RequestException = Exception
 
@@ -110,13 +90,13 @@ class TestCheck:
 
     @patch("llms_txt_checker.requests")
     def test_timeout_capped(self, mock_requests):
-        head_resp = MagicMock()
-        head_resp.status_code = 404
-        mock_requests.head.return_value = head_resp
+        get_resp = MagicMock()
+        get_resp.status_code = 404
+        mock_requests.get.return_value = get_resp
         mock_requests.RequestException = Exception
 
         llms_txt_checker.check("https://example.com", timeout=60)
         # Should be capped to MAX_TIMEOUT (5s)
-        mock_requests.head.assert_called_once()
-        call_kwargs = mock_requests.head.call_args[1]
+        mock_requests.get.assert_called_once()
+        call_kwargs = mock_requests.get.call_args[1]
         assert call_kwargs["timeout"] == 5

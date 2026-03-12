@@ -6,6 +6,15 @@ from injection_patterns import PATTERNS
 
 CONTEXT_CHARS = 60
 
+# Risk levels — use these constants instead of raw strings
+RISK_OK = "OK"
+RISK_MEDIUM = "MEDIUM"
+RISK_HIGH = "HIGH"
+
+# Pattern severity levels (must match values in injection_patterns.py)
+SEVERITY_HIGH = "high"
+SEVERITY_MEDIUM = "medium"
+
 
 def generate_salt():
     """Return an 8-char random hex string."""
@@ -37,10 +46,10 @@ def scan(text):
             })
 
     if not matches:
-        risk = "OK"
-    elif any(m["severity"] == "high" for m in matches):
-        risk = "HIGH"
+        risk = RISK_OK
+    elif any(m["severity"] == SEVERITY_HIGH for m in matches):
+        risk = RISK_HIGH
     else:
-        risk = "MEDIUM"
+        risk = RISK_MEDIUM
 
     return {"risk": risk, "matches": matches}

@@ -77,7 +77,7 @@ PATTERNS = [
     # Base64 instruction blocks (suspicious long base64 strings)
     (
         "base64_block",
-        re.compile(r"[A-Za-z0-9+/]{50,}={0,2}"),
+        re.compile(r"[A-Za-z0-9+/]{50,500}={0,2}"),
         "medium",
     ),
 

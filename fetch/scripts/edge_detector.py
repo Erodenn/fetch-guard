@@ -2,6 +2,15 @@
 
 import re
 
+# Edge type constants
+EDGE_BOT_BLOCK = "bot_block"
+EDGE_PAYWALL = "paywall"
+EDGE_LOGIN_WALL = "login_wall"
+
+# Confidence levels
+CONFIDENCE_HIGH = "high"
+CONFIDENCE_MEDIUM = "medium"
+
 # ---------------------------------------------------------------------------
 # Compiled detection patterns
 # ---------------------------------------------------------------------------
@@ -66,24 +75,24 @@ def detect(fetch_result):
     if status in _BOT_BLOCK_STATUSES:
         if status == 429:
             return {
-                "edge_type": "bot_block",
-                "confidence": "high",
+                "edge_type": EDGE_BOT_BLOCK,
+                "confidence": CONFIDENCE_HIGH,
                 "detail": "Rate limited (HTTP 429)",
                 "should_retry": True,
             }
 
         if _CLOUDFLARE_PATTERNS.search(html):
             return {
-                "edge_type": "bot_block",
-                "confidence": "high",
+                "edge_type": EDGE_BOT_BLOCK,
+                "confidence": CONFIDENCE_HIGH,
                 "detail": "Cloudflare challenge detected",
                 "should_retry": True,
             }
 
         if _GENERIC_BOT_BLOCK_PATTERNS.search(html):
             return {
-                "edge_type": "bot_block",
-                "confidence": "medium",
+                "edge_type": EDGE_BOT_BLOCK,
+                "confidence": CONFIDENCE_MEDIUM,
                 "detail": f"Bot block pattern detected (HTTP {status})",
                 "should_retry": True,
             }
@@ -91,8 +100,8 @@ def detect(fetch_result):
         # Bare 401/403/999 without recognizable body patterns
         if status in {401, 403, 999}:
             return {
-                "edge_type": "bot_block",
-                "confidence": "medium",
+                "edge_type": EDGE_BOT_BLOCK,
+                "confidence": CONFIDENCE_MEDIUM,
                 "detail": f"Access denied (HTTP {status})",
                 "should_retry": True,
             }
@@ -100,8 +109,8 @@ def detect(fetch_result):
     # --- Paywall detection (any status, typically 200) ---
     if _PAYWALL_PATTERNS.search(html):
         return {
-            "edge_type": "paywall",
-            "confidence": "medium",
+            "edge_type": EDGE_PAYWALL,
+            "confidence": CONFIDENCE_MEDIUM,
             "detail": "Paywall pattern detected",
             "should_retry": False,
         }
@@ -109,16 +118,16 @@ def detect(fetch_result):
     # --- Login wall detection ---
     if _LOGIN_WALL_PATTERNS.search(html):
         return {
-            "edge_type": "login_wall",
-            "confidence": "medium",
+            "edge_type": EDGE_LOGIN_WALL,
+            "confidence": CONFIDENCE_MEDIUM,
             "detail": "Login wall pattern detected",
             "should_retry": False,
         }
 
     if _LOGIN_URL_PATTERNS.search(final_url):
         return {
-            "edge_type": "login_wall",
-            "confidence": "medium",
+            "edge_type": EDGE_LOGIN_WALL,
+            "confidence": CONFIDENCE_MEDIUM,
             "detail": "Redirected to login page",
             "should_retry": False,
         }

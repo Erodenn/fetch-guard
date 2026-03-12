@@ -2,6 +2,8 @@
 
 import json
 
+from injection_guard import RISK_OK
+
 
 def format_output(
     url,
@@ -39,7 +41,7 @@ def format_output(
     # Status line
     risk = risk_result["risk"]
     match_count = len(risk_result["matches"])
-    if risk == "OK":
+    if risk == RISK_OK:
         status = "OK"
     else:
         status = f"INJECTION WARNING ({match_count} pattern match{'es' if match_count != 1 else ''})"

@@ -10,6 +10,14 @@ import os
 import sys
 from datetime import datetime, timezone
 
+# Ensure consistent UTF-8 output on Windows
+if not os.environ.get("PYTHONIOENCODING"):
+    os.environ["PYTHONIOENCODING"] = "utf-8"
+if sys.stdout.encoding != "utf-8":
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
+
 # ---------------------------------------------------------------------------
 # Dependency check
 # ---------------------------------------------------------------------------
@@ -209,7 +217,7 @@ def main():
     print(output)
 
     # 15. Exit code
-    if args.strict and risk_result["risk"] == "HIGH":
+    if args.strict and risk_result["risk"] == injection_guard.RISK_HIGH:
         sys.exit(2)
     sys.exit(0)
 

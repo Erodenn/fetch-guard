@@ -22,7 +22,7 @@ def is_root_url(url):
 
 
 def check(url, timeout=5):
-    """HEAD then GET for /llms.txt at the domain root.
+    """GET for /llms.txt at the domain root.
 
     Args:
         url: any URL — the domain root is extracted automatically
@@ -39,17 +39,10 @@ def check(url, timeout=5):
     headers = {"User-Agent": USER_AGENT}
 
     try:
-        head = requests.head(llms_url, timeout=timeout, headers=headers, allow_redirects=True)
-        if head.status_code != 200:
+        resp = requests.get(llms_url, timeout=timeout, headers=headers, allow_redirects=True)
+        if resp.status_code != 200 or not resp.text.strip():
             return {"available": False, "content": None, "url": None}
-    except requests.RequestException:
-        return {"available": False, "content": None, "url": None}
-
-    try:
-        get = requests.get(llms_url, timeout=timeout, headers=headers, allow_redirects=True)
-        if get.status_code != 200 or not get.text.strip():
-            return {"available": False, "content": None, "url": None}
-        get.encoding = get.apparent_encoding or "utf-8"
-        return {"available": True, "content": get.text, "url": llms_url}
+        resp.encoding = resp.apparent_encoding or "utf-8"
+        return {"available": True, "content": resp.text, "url": llms_url}
     except requests.RequestException:
         return {"available": False, "content": None, "url": None}
