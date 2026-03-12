@@ -8,6 +8,7 @@ dependencies = [
     "requests",
     "beautifulsoup4",
     "trafilatura",
+    "extruct",
 ]
 
 [project.optional-dependencies]
