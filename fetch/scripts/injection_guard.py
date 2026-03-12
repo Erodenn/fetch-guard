@@ -1,11 +1,6 @@
 """Session-salted tag wrapping, injection pattern scanning, and risk assessment."""
 
-import os
 import secrets
-import sys
-
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, SCRIPT_DIR)
 
 from injection_patterns import PATTERNS
 

@@ -50,24 +50,14 @@ def _is_decomposed(element):
     return element.attrs is None
 
 
-def _has_hidden_style(element):
-    """Check if an element's inline style makes it invisible."""
+def _matches_style_patterns(element, patterns):
+    """Check if an element's inline style matches any pattern in the list."""
     if _is_decomposed(element):
         return False
     style = element.get("style", "")
     if not style:
         return False
-    return any(p.search(style) for p in HIDDEN_STYLE_PATTERNS)
-
-
-def _has_offscreen_style(element):
-    """Check if an element is positioned off-screen."""
-    if _is_decomposed(element):
-        return False
-    style = element.get("style", "")
-    if not style:
-        return False
-    return any(p.search(style) for p in OFFSCREEN_STYLE_PATTERNS)
+    return any(p.search(style) for p in patterns)
 
 
 def _strip_nonprinting(text):
@@ -75,7 +65,7 @@ def _strip_nonprinting(text):
     count = 0
     chars = []
     for ch in text:
-        if ch in NONPRINTING_CODEPOINTS or unicodedata.category(ch) in ("Cf", "Cc") and ch not in ("\n", "\r", "\t"):
+        if (ch in NONPRINTING_CODEPOINTS or unicodedata.category(ch) in ("Cf", "Cc")) and ch not in ("\n", "\r", "\t"):
             count += 1
         else:
             chars.append(ch)
@@ -95,23 +85,20 @@ def sanitize(html):
         "nonprinting_chars": 0,
     }
 
-    # Remove elements with hidden inline styles
+    # Remove elements with hidden or off-screen inline styles (single pass)
     for element in list(soup.find_all(style=True)):
-        if _has_hidden_style(element):
+        if _matches_style_patterns(element, HIDDEN_STYLE_PATTERNS):
             element.decompose()
             tally["hidden_elements"] += 1
+        elif _matches_style_patterns(element, OFFSCREEN_STYLE_PATTERNS):
+            element.decompose()
+            tally["offscreen_elements"] += 1
 
     # Remove aria-hidden elements
     for element in list(soup.find_all(attrs={"aria-hidden": "true"})):
         if not _is_decomposed(element):
             element.decompose()
             tally["hidden_elements"] += 1
-
-    # Remove off-screen positioned elements
-    for element in list(soup.find_all(style=True)):
-        if _has_offscreen_style(element):
-            element.decompose()
-            tally["offscreen_elements"] += 1
 
     # Remove <noscript> tags
     for element in list(soup.find_all("noscript")):

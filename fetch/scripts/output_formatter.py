@@ -1,7 +1,7 @@
 """Assembles the status header and salted body into the final stdout output."""
 
 
-def format_output(url, fetch_timestamp, risk_result, sanitize_tally, salted_body, max_words=None):
+def format_output(url, fetch_timestamp, risk_result, sanitize_tally, salted_body, truncated_at=None):
     """Build the final output string.
 
     Args:
@@ -10,7 +10,7 @@ def format_output(url, fetch_timestamp, risk_result, sanitize_tally, salted_body
         risk_result: dict from injection_guard.scan() with risk and matches
         sanitize_tally: dict from html_sanitizer.sanitize() with removal counts
         salted_body: content already wrapped in salted tags
-        max_words: optional word cap (hard cut)
+        truncated_at: word count the body was truncated to, or None if not truncated
     """
     # Status line
     risk = risk_result["risk"]
@@ -36,10 +36,8 @@ def format_output(url, fetch_timestamp, risk_result, sanitize_tally, salted_body
     )
 
     body = salted_body
-    if max_words is not None:
-        words = body.split()
-        if len(words) > max_words:
-            body = " ".join(words[:max_words]) + f"\n\n[Truncated at {max_words} words]"
+    if truncated_at is not None:
+        body += f"\n\n[Truncated at {truncated_at} words]"
 
     # Injection match details (if any)
     details = ""

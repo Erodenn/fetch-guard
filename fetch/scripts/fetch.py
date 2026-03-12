@@ -93,11 +93,19 @@ def main():
     # 4. Scan for injection
     risk_result = injection_guard.scan(markdown)
 
-    # 5. Salt and wrap
+    # 5. Truncate before wrapping so salted tags stay intact
+    truncated = False
+    if args.max_words is not None:
+        words = markdown.split()
+        if len(words) > args.max_words:
+            markdown = " ".join(words[:args.max_words])
+            truncated = True
+
+    # 6. Salt and wrap
     salt = injection_guard.generate_salt()
     salted_body = injection_guard.wrap_content(markdown, salt)
 
-    # 6. Format output
+    # 7. Format output
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     output = output_formatter.format_output(
         url=result["final_url"],
@@ -105,7 +113,7 @@ def main():
         risk_result=risk_result,
         sanitize_tally=tally,
         salted_body=salted_body,
-        max_words=args.max_words,
+        truncated_at=args.max_words if truncated else None,
     )
 
     # 7. Print

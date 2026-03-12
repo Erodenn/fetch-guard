@@ -86,27 +86,24 @@ class TestFormatOutput:
         assert "1 offscreen elements" in output
         assert "42 non-printing chars" in output
 
-    def test_max_words_truncates(self):
-        long_body = " ".join(f"word{i}" for i in range(100))
+    def test_truncated_at_appends_notice(self):
         output = output_formatter.format_output(
             url="https://example.com",
             fetch_timestamp="2026-03-11T12:00:00Z",
             risk_result=_make_risk_result(),
             sanitize_tally=_make_tally(),
-            salted_body=long_body,
-            max_words=10,
+            salted_body="<fetch-content-abc>short body</fetch-content-abc>",
+            truncated_at=10,
         )
         assert "[Truncated at 10 words]" in output
 
-    def test_max_words_no_truncation_when_under(self):
-        short_body = "just a few words"
+    def test_no_truncation_notice_when_none(self):
         output = output_formatter.format_output(
             url="https://example.com",
             fetch_timestamp="2026-03-11T12:00:00Z",
             risk_result=_make_risk_result(),
             sanitize_tally=_make_tally(),
-            salted_body=short_body,
-            max_words=100,
+            salted_body="just a few words",
         )
         assert "Truncated" not in output
 
