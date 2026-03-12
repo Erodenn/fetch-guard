@@ -146,3 +146,39 @@ class TestFetch:
 
         _, kwargs = mock_get.call_args
         assert "ClaudeFetch" in kwargs["headers"]["User-Agent"]
+
+    @patch("fetch_client.requests.get")
+    def test_content_type_in_result(self, mock_get):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = '{"key": "value"}'
+        mock_response.url = "https://api.example.com/data"
+        mock_response.apparent_encoding = "utf-8"
+        mock_response.headers = {"Content-Type": "application/json; charset=utf-8"}
+        mock_get.return_value = mock_response
+
+        result = fetch_client.fetch("https://api.example.com/data")
+
+        assert result["content_type"] == "application/json; charset=utf-8"
+
+    @patch("fetch_client.requests.get")
+    def test_content_type_missing_header(self, mock_get):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = "data"
+        mock_response.url = "https://example.com"
+        mock_response.apparent_encoding = "utf-8"
+        mock_response.headers = {}
+        mock_get.return_value = mock_response
+
+        result = fetch_client.fetch("https://example.com")
+
+        assert result["content_type"] == ""
+
+    @patch("fetch_client.requests.get")
+    def test_content_type_none_on_error(self, mock_get):
+        mock_get.side_effect = requests.exceptions.Timeout()
+
+        result = fetch_client.fetch("https://example.com", timeout=5)
+
+        assert result["content_type"] is None

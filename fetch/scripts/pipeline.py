@@ -17,6 +17,7 @@ if SCRIPT_DIR not in sys.path:
     sys.path.insert(0, SCRIPT_DIR)
 
 import content_extractor
+import content_type_handler
 import edge_detector
 import fetch_client
 import html_sanitizer
@@ -63,6 +64,7 @@ def run(url, timeout=180, max_words=None, strict=False, js=False, links="domains
         llms_txt_replaced = True
         raw_html = llms_result["content"]
         final_url = llms_result["url"]
+        content_type = ""
     else:
         # 2. Fetch — Playwright or static
         fetcher = playwright_fetcher if js else fetch_client
@@ -86,17 +88,78 @@ def run(url, timeout=180, max_words=None, strict=False, js=False, links="domains
                 raise FetchError(f"Error on retry: {result['error']}")
             edge_result = edge_detector.detect(result)
 
-        # 5. Check we have HTML to work with
-        if not result["html"]:
-            raise FetchError("No response body received.")
-
         raw_html = result["html"]
         final_url = result["final_url"]
+        content_type = result.get("content_type", "")
 
-    # 6. Sanitize
+    # 6. Content-type routing — non-HTML gets its own fast path
+    if not llms_txt_replaced:
+        content_class = content_type_handler.classify(
+            content_type, (raw_html or "")[:500],
+        )
+    else:
+        content_class = "html"  # llms.txt always uses the HTML path
+
+    if content_class == "binary":
+        raise FetchError(
+            f"Binary content type not supported: {content_type}"
+        )
+
+    if content_class not in ("html", "unknown"):
+
+        markdown = content_type_handler.handle(content_class, raw_html)
+
+        # Still run injection scan and truncation
+        risk_result = injection_guard.scan(markdown)
+
+        truncated_at = None
+        if max_words is not None:
+            words = markdown.split()
+            if len(words) > max_words:
+                markdown = " ".join(words[:max_words])
+                truncated_at = max_words
+
+        edge_cases = None
+        if edge_result and edge_result["edge_type"]:
+            edge_cases = {
+                "type": edge_result["edge_type"],
+                "detail": edge_result["detail"],
+            }
+
+        return {
+            "url": final_url,
+            "fetched_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "body": markdown,
+            "content_type": content_class,
+            "metadata": metadata_extractor._null_metadata(),
+            "links": [] if links == "domains" else {},
+            "links_mode": links,
+            "risk_level": risk_result["risk"],
+            "injection_matches": risk_result["matches"],
+            "edge_cases": edge_cases,
+            "sanitization": {
+                "hidden_elements": 0,
+                "offscreen_elements": 0,
+                "nonprinting_chars": 0,
+            },
+            "llms_txt_available": llms_txt_available,
+            "llms_txt_replaced": False,
+            "js_rendered": js_rendered,
+            "js_hint": False,
+            "retried": retried,
+            "truncated_at": truncated_at,
+        }
+
+    # --- HTML path (unchanged) ---
+
+    # 7. Check we have HTML to work with
+    if not raw_html:
+        raise FetchError("No response body received.")
+
+    # 8. Sanitize
     cleaned_html, tally = html_sanitizer.sanitize(raw_html)
 
-    # 7. Extract content
+    # 8. Extract content
     markdown = content_extractor.extract(cleaned_html)
     if markdown is None:
         if not js:
@@ -108,10 +171,10 @@ def run(url, timeout=180, max_words=None, strict=False, js=False, links="domains
                 msg += f" Detected edge case: {edge_result['edge_type']} ({edge_result['detail']})"
             raise FetchError(msg)
 
-    # 8. Extract metadata
+    # 9. Extract metadata
     metadata = metadata_extractor._null_metadata() if llms_txt_replaced else metadata_extractor.extract(cleaned_html)
 
-    # 9. Extract links
+    # 10. Extract links
     if llms_txt_replaced:
         extracted_links = [] if links == "domains" else {}
     elif links == "full":
@@ -119,10 +182,10 @@ def run(url, timeout=180, max_words=None, strict=False, js=False, links="domains
     else:
         extracted_links = link_extractor.extract_domains(cleaned_html, url)
 
-    # 10. Scan for injection
+    # 11. Scan for injection
     risk_result = injection_guard.scan(markdown)
 
-    # 11. Truncate
+    # 12. Truncate
     truncated_at = None
     if max_words is not None:
         words = markdown.split()
@@ -130,7 +193,7 @@ def run(url, timeout=180, max_words=None, strict=False, js=False, links="domains
             markdown = " ".join(words[:max_words])
             truncated_at = max_words
 
-    # 12. Build result
+    # 13. Build result
     edge_cases = None
     if edge_result and edge_result["edge_type"]:
         edge_cases = {
@@ -142,6 +205,7 @@ def run(url, timeout=180, max_words=None, strict=False, js=False, links="domains
         "url": final_url,
         "fetched_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "body": markdown,
+        "content_type": "html",
         "metadata": metadata,
         "links": extracted_links,
         "links_mode": links,

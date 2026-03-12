@@ -37,6 +37,9 @@ def fetch(url, timeout=180):
                 page.wait_for_load_state("networkidle", timeout=timeout_ms)
 
             status_code = response.status if response else None
+            content_type = (
+                response.headers.get("content-type", "") if response else ""
+            )
             html = page.content()
             final_url = page.url
 
@@ -46,6 +49,7 @@ def fetch(url, timeout=180):
                 "status_code": status_code,
                 "html": html,
                 "final_url": final_url,
+                "content_type": content_type,
                 "error": None,
             }
     except PWTimeoutError:

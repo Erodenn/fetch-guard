@@ -16,6 +16,7 @@ def _error_result(url, error):
         "status_code": None,
         "html": None,
         "final_url": url,
+        "content_type": None,
         "error": error,
     }
 
@@ -48,6 +49,7 @@ def fetch(url, timeout=180, user_agent=None):
             "status_code": response.status_code,
             "html": response.text,
             "final_url": response.url,
+            "content_type": response.headers.get("Content-Type", ""),
             "error": None,
         }
     except requests.exceptions.Timeout:

@@ -14,11 +14,13 @@ def _mock_fetch_result(
     html="<html><body><p>Hello world</p></body></html>",
     url="https://example.com",
     error=None,
+    content_type="text/html; charset=utf-8",
 ):
     return {
         "status_code": 200,
         "html": html,
         "final_url": url,
+        "content_type": content_type,
         "error": error,
         "headers": {},
     }
@@ -93,8 +95,8 @@ class TestRunSuccess:
         result = run("https://example.com")
 
         expected_keys = {
-            "url", "fetched_at", "body", "metadata", "links",
-            "links_mode", "risk_level", "injection_matches",
+            "url", "fetched_at", "body", "content_type", "metadata",
+            "links", "links_mode", "risk_level", "injection_matches",
             "edge_cases", "sanitization", "llms_txt_available",
             "llms_txt_replaced", "js_rendered", "js_hint",
             "retried", "truncated_at",
@@ -461,3 +463,181 @@ class TestLinksMode:
 
         assert result["links_mode"] == "full"
         mock_links.extract_full.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# Content-type routing
+# ---------------------------------------------------------------------------
+
+class TestContentTypeRouting:
+    """Tests for non-HTML content type detection and routing."""
+
+    @patch("pipeline.llms_txt_checker")
+    @patch("pipeline.edge_detector")
+    @patch("pipeline.fetch_client")
+    @patch("pipeline.injection_guard")
+    def test_json_content_type_returns_formatted_json(
+        self, mock_guard, mock_client, mock_edge, mock_llms,
+    ):
+        mock_llms.check.return_value = _mock_llms_result()
+        mock_llms.is_root_url.return_value = False
+        mock_client.fetch.return_value = _mock_fetch_result(
+            html='{"key": "value"}',
+            content_type="application/json",
+        )
+        mock_edge.detect.return_value = _mock_edge_result()
+        mock_guard.scan.return_value = _OK_SCAN
+
+        result = run("https://api.example.com/data")
+
+        assert result["content_type"] == "json"
+        assert "```json" in result["body"]
+        assert '"key": "value"' in result["body"]
+        assert result["js_hint"] is False
+        assert result["sanitization"]["hidden_elements"] == 0
+
+    @patch("pipeline.llms_txt_checker")
+    @patch("pipeline.edge_detector")
+    @patch("pipeline.fetch_client")
+    @patch("pipeline.injection_guard")
+    def test_plain_text_content_type_passthrough(
+        self, mock_guard, mock_client, mock_edge, mock_llms,
+    ):
+        mock_llms.check.return_value = _mock_llms_result()
+        mock_llms.is_root_url.return_value = False
+        mock_client.fetch.return_value = _mock_fetch_result(
+            html="Just some plain text.",
+            content_type="text/plain",
+        )
+        mock_edge.detect.return_value = _mock_edge_result()
+        mock_guard.scan.return_value = _OK_SCAN
+
+        result = run("https://example.com/file.txt")
+
+        assert result["content_type"] == "plain_text"
+        assert result["body"] == "Just some plain text."
+
+    @patch("pipeline.llms_txt_checker")
+    @patch("pipeline.edge_detector")
+    @patch("pipeline.fetch_client")
+    @patch("pipeline.content_extractor")
+    @patch("pipeline.html_sanitizer")
+    @patch("pipeline.metadata_extractor")
+    @patch("pipeline.link_extractor")
+    @patch("pipeline.injection_guard")
+    def test_plain_text_with_html_body_routes_to_html_pipeline(
+        self, mock_guard, mock_links, mock_meta, mock_sanitizer,
+        mock_content, mock_client, mock_edge, mock_llms,
+    ):
+        mock_llms.check.return_value = _mock_llms_result()
+        mock_llms.is_root_url.return_value = False
+        mock_client.fetch.return_value = _mock_fetch_result(
+            html="<!DOCTYPE html><html><body><p>Hello</p></body></html>",
+            content_type="text/plain",
+        )
+        mock_edge.detect.return_value = _mock_edge_result()
+        mock_sanitizer.sanitize.return_value = (
+            "<p>Hello</p>", _zero_tally(),
+        )
+        mock_content.extract.return_value = "Hello"
+        mock_meta.extract.return_value = _null_meta()
+        mock_links.extract_domains.return_value = []
+        mock_guard.scan.return_value = _OK_SCAN
+
+        result = run("https://example.com")
+
+        # Should have gone through HTML pipeline
+        assert result["content_type"] == "html"
+        mock_sanitizer.sanitize.assert_called_once()
+
+    @patch("pipeline.llms_txt_checker")
+    @patch("pipeline.edge_detector")
+    @patch("pipeline.fetch_client")
+    def test_binary_content_type_raises(
+        self, mock_client, mock_edge, mock_llms,
+    ):
+        mock_llms.check.return_value = _mock_llms_result()
+        mock_llms.is_root_url.return_value = False
+        mock_client.fetch.return_value = _mock_fetch_result(
+            html="",
+            content_type="application/pdf",
+        )
+        mock_edge.detect.return_value = _mock_edge_result()
+
+        with pytest.raises(FetchError, match="Binary content type"):
+            run("https://example.com/file.pdf")
+
+    @patch("pipeline.llms_txt_checker")
+    @patch("pipeline.edge_detector")
+    @patch("pipeline.fetch_client")
+    @patch("pipeline.injection_guard")
+    def test_csv_content_type_returns_markdown_table(
+        self, mock_guard, mock_client, mock_edge, mock_llms,
+    ):
+        mock_llms.check.return_value = _mock_llms_result()
+        mock_llms.is_root_url.return_value = False
+        mock_client.fetch.return_value = _mock_fetch_result(
+            html="name,age\nAlice,30\nBob,25",
+            content_type="text/csv",
+        )
+        mock_edge.detect.return_value = _mock_edge_result()
+        mock_guard.scan.return_value = _OK_SCAN
+
+        result = run("https://example.com/data.csv")
+
+        assert result["content_type"] == "csv"
+        assert "| name | age |" in result["body"]
+        assert "| Alice | 30 |" in result["body"]
+
+    @patch("pipeline.llms_txt_checker")
+    @patch("pipeline.edge_detector")
+    @patch("pipeline.fetch_client")
+    @patch("pipeline.injection_guard")
+    def test_non_html_truncation_works(
+        self, mock_guard, mock_client, mock_edge, mock_llms,
+    ):
+        mock_llms.check.return_value = _mock_llms_result()
+        mock_llms.is_root_url.return_value = False
+        mock_client.fetch.return_value = _mock_fetch_result(
+            html="word1 word2 word3 word4 word5",
+            content_type="text/plain",
+        )
+        mock_edge.detect.return_value = _mock_edge_result()
+        mock_guard.scan.return_value = _OK_SCAN
+
+        result = run("https://example.com/file.txt", max_words=3)
+
+        assert result["truncated_at"] == 3
+        assert result["body"] == "word1 word2 word3"
+
+    @patch("pipeline.llms_txt_checker")
+    @patch("pipeline.edge_detector")
+    @patch("pipeline.fetch_client")
+    @patch("pipeline.injection_guard")
+    def test_xml_rss_content_type_renders_feed(
+        self, mock_guard, mock_client, mock_edge, mock_llms,
+    ):
+        rss = """<?xml version="1.0"?>
+        <rss version="2.0">
+          <channel>
+            <title>Feed</title>
+            <item>
+              <title>Post</title>
+              <link>https://example.com/1</link>
+            </item>
+          </channel>
+        </rss>"""
+        mock_llms.check.return_value = _mock_llms_result()
+        mock_llms.is_root_url.return_value = False
+        mock_client.fetch.return_value = _mock_fetch_result(
+            html=rss,
+            content_type="application/rss+xml",
+        )
+        mock_edge.detect.return_value = _mock_edge_result()
+        mock_guard.scan.return_value = _OK_SCAN
+
+        result = run("https://example.com/feed.xml")
+
+        assert result["content_type"] == "xml"
+        assert "# Feed" in result["body"]
+        assert "[Post](https://example.com/1)" in result["body"]
