@@ -108,40 +108,10 @@ def main():
     salt = injection_guard.generate_salt()
     salted_body = injection_guard.wrap_content(result["body"], salt)
 
-    # 3. Reconstruct risk_result dict for output_formatter
-    risk_result = {
-        "risk": result["risk_level"],
-        "matches": result["injection_matches"],
-    }
+    # 3. Format and print
+    print(output_formatter.format_output(result, salted_body))
 
-    # 4. Reconstruct edge fields
-    edge_type = result["edge_cases"]["type"] if result["edge_cases"] else None
-    edge_detail = result["edge_cases"]["detail"] if result["edge_cases"] else None
-
-    # 5. Format output
-    output = output_formatter.format_output(
-        url=result["url"],
-        fetch_timestamp=result["fetched_at"],
-        risk_result=risk_result,
-        sanitize_tally=result["sanitization"],
-        salted_body=salted_body,
-        truncated_at=result["truncated_at"],
-        metadata=result["metadata"],
-        links=result["links"],
-        links_mode=result["links_mode"],
-        llms_txt_available=result["llms_txt_available"],
-        llms_txt_replaced=result["llms_txt_replaced"],
-        js_rendered=result["js_rendered"],
-        edge_type=edge_type,
-        edge_detail=edge_detail,
-        retried=result["retried"],
-        js_hint=result["js_hint"],
-    )
-
-    # 6. Print
-    print(output)
-
-    # 7. Exit code
+    # 4. Exit code
     if args.strict and result["risk_level"] == injection_guard.RISK_HIGH:
         sys.exit(2)
     sys.exit(0)

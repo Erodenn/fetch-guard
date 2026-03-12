@@ -7,7 +7,7 @@ import extruct
 from bs4 import BeautifulSoup
 
 
-def _null_metadata():
+def null_metadata():
     """Return the unified schema with all fields set to None."""
     return {
         "title": None,
@@ -126,7 +126,7 @@ def extract(html):
     meta = _from_metatags(html)
 
     # Merge with priority: JSON-LD > OG > meta
-    merged = _null_metadata()
+    merged = null_metadata()
     for key in merged:
         merged[key] = json_ld.get(key) or og.get(key) or meta.get(key)
 

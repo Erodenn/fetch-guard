@@ -27,9 +27,71 @@ import llms_txt_checker
 import metadata_extractor
 import playwright_fetcher
 
+_ZERO_TALLY = {"hidden_elements": 0, "offscreen_elements": 0, "nonprinting_chars": 0}
+
 
 class FetchError(Exception):
     """Raised when the fetch pipeline encounters a non-recoverable error."""
+
+
+def _truncate(text, max_words):
+    """Truncate text to a word limit. Returns (text, truncated_at)."""
+    if max_words is None:
+        return text, None
+    words = text.split()
+    if len(words) > max_words:
+        return " ".join(words[:max_words]), max_words
+    return text, None
+
+
+def _build_edge_cases(edge_result):
+    """Build the edge_cases dict from an edge detector result, or None."""
+    if edge_result and edge_result["edge_type"]:
+        return {
+            "type": edge_result["edge_type"],
+            "detail": edge_result["detail"],
+        }
+    return None
+
+
+def _build_result(
+    *,
+    url,
+    body,
+    content_type,
+    metadata,
+    links,
+    links_mode,
+    risk_result,
+    edge_result,
+    sanitization,
+    llms_txt_available,
+    llms_txt_replaced,
+    js_rendered,
+    js_hint,
+    retried,
+    truncated_at,
+):
+    """Assemble the final pipeline result dict."""
+    return {
+        "url": url,
+        "fetched_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "body": body,
+        "content_type": content_type,
+        "metadata": metadata,
+        "links": links,
+        "links_mode": links_mode,
+        "risk_level": risk_result["risk"],
+        "injection_matches": risk_result["matches"],
+        "edge_cases": _build_edge_cases(edge_result),
+        "sanitization": sanitization,
+        "llms_txt_available": llms_txt_available,
+        "llms_txt_replaced": llms_txt_replaced,
+        "js_rendered": js_rendered,
+        "js_hint": js_hint,
+        "retried": retried,
+        "truncated_at": truncated_at,
+    }
 
 
 def run(url, timeout=180, max_words=None, strict=False, js=False, links="domains"):
@@ -92,10 +154,10 @@ def run(url, timeout=180, max_words=None, strict=False, js=False, links="domains
         final_url = result["final_url"]
         content_type = result.get("content_type", "")
 
-    # 6. Content-type routing — non-HTML gets its own fast path
+    # 5. Content-type routing — non-HTML gets its own fast path
     if not llms_txt_replaced:
         content_class = content_type_handler.classify(
-            content_type, (raw_html or "")[:500],
+            content_type, (raw_html[:500] if raw_html else ""),
         )
     else:
         content_class = "html"  # llms.txt always uses the HTML path
@@ -108,55 +170,34 @@ def run(url, timeout=180, max_words=None, strict=False, js=False, links="domains
     if content_class not in ("html", "unknown"):
 
         markdown = content_type_handler.handle(content_class, raw_html)
-
-        # Still run injection scan and truncation
         risk_result = injection_guard.scan(markdown)
+        markdown, truncated_at = _truncate(markdown, max_words)
 
-        truncated_at = None
-        if max_words is not None:
-            words = markdown.split()
-            if len(words) > max_words:
-                markdown = " ".join(words[:max_words])
-                truncated_at = max_words
+        return _build_result(
+            url=final_url,
+            body=markdown,
+            content_type=content_class,
+            metadata=metadata_extractor.null_metadata(),
+            links=[] if links == "domains" else {},
+            links_mode=links,
+            risk_result=risk_result,
+            edge_result=edge_result,
+            sanitization=_ZERO_TALLY,
+            llms_txt_available=llms_txt_available,
+            llms_txt_replaced=False,
+            js_rendered=js_rendered,
+            js_hint=False,
+            retried=retried,
+            truncated_at=truncated_at,
+        )
 
-        edge_cases = None
-        if edge_result and edge_result["edge_type"]:
-            edge_cases = {
-                "type": edge_result["edge_type"],
-                "detail": edge_result["detail"],
-            }
+    # --- HTML path ---
 
-        return {
-            "url": final_url,
-            "fetched_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "body": markdown,
-            "content_type": content_class,
-            "metadata": metadata_extractor._null_metadata(),
-            "links": [] if links == "domains" else {},
-            "links_mode": links,
-            "risk_level": risk_result["risk"],
-            "injection_matches": risk_result["matches"],
-            "edge_cases": edge_cases,
-            "sanitization": {
-                "hidden_elements": 0,
-                "offscreen_elements": 0,
-                "nonprinting_chars": 0,
-            },
-            "llms_txt_available": llms_txt_available,
-            "llms_txt_replaced": False,
-            "js_rendered": js_rendered,
-            "js_hint": False,
-            "retried": retried,
-            "truncated_at": truncated_at,
-        }
-
-    # --- HTML path (unchanged) ---
-
-    # 7. Check we have HTML to work with
+    # 6. Check we have HTML to work with
     if not raw_html:
         raise FetchError("No response body received.")
 
-    # 8. Sanitize
+    # 7. Sanitize
     cleaned_html, tally = html_sanitizer.sanitize(raw_html)
 
     # 8. Extract content
@@ -172,7 +213,7 @@ def run(url, timeout=180, max_words=None, strict=False, js=False, links="domains
             raise FetchError(msg)
 
     # 9. Extract metadata
-    metadata = metadata_extractor._null_metadata() if llms_txt_replaced else metadata_extractor.extract(cleaned_html)
+    metadata = metadata_extractor.null_metadata() if llms_txt_replaced else metadata_extractor.extract(cleaned_html)
 
     # 10. Extract links
     if llms_txt_replaced:
@@ -186,41 +227,27 @@ def run(url, timeout=180, max_words=None, strict=False, js=False, links="domains
     risk_result = injection_guard.scan(markdown)
 
     # 12. Truncate
-    truncated_at = None
-    if max_words is not None:
-        words = markdown.split()
-        if len(words) > max_words:
-            markdown = " ".join(words[:max_words])
-            truncated_at = max_words
+    markdown, truncated_at = _truncate(markdown, max_words)
 
     # 13. Build result
-    edge_cases = None
-    if edge_result and edge_result["edge_type"]:
-        edge_cases = {
-            "type": edge_result["edge_type"],
-            "detail": edge_result["detail"],
-        }
-
-    return {
-        "url": final_url,
-        "fetched_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "body": markdown,
-        "content_type": "html",
-        "metadata": metadata,
-        "links": extracted_links,
-        "links_mode": links,
-        "risk_level": risk_result["risk"],
-        "injection_matches": risk_result["matches"],
-        "edge_cases": edge_cases,
-        "sanitization": {
+    return _build_result(
+        url=final_url,
+        body=markdown,
+        content_type="html",
+        metadata=metadata,
+        links=extracted_links,
+        links_mode=links,
+        risk_result=risk_result,
+        edge_result=edge_result,
+        sanitization={
             "hidden_elements": tally.get("hidden_elements", 0),
             "offscreen_elements": tally.get("offscreen_elements", 0),
             "nonprinting_chars": tally.get("nonprinting_chars", 0),
         },
-        "llms_txt_available": llms_txt_available,
-        "llms_txt_replaced": llms_txt_replaced,
-        "js_rendered": js_rendered,
-        "js_hint": js_hint,
-        "retried": retried,
-        "truncated_at": truncated_at,
-    }
+        llms_txt_available=llms_txt_available,
+        llms_txt_replaced=llms_txt_replaced,
+        js_rendered=js_rendered,
+        js_hint=js_hint,
+        retried=retried,
+        truncated_at=truncated_at,
+    )

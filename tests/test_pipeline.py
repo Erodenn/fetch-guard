@@ -414,7 +414,7 @@ class TestLlmsTxt:
             "# LLMs.txt content", _zero_tally(),
         )
         mock_content.extract.return_value = "LLMs.txt content"
-        mock_meta._null_metadata.return_value = _null_meta()
+        mock_meta.null_metadata.return_value = _null_meta()
         mock_guard.scan.return_value = _OK_SCAN
 
         result = run("https://example.com")

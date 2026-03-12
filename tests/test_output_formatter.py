@@ -5,37 +5,40 @@ import json
 import output_formatter
 
 
-def _make_risk_result(risk="OK", matches=None):
-    return {"risk": risk, "matches": matches or []}
-
-
-def _make_tally(hidden=0, offscreen=0, nonprinting=0):
-    return {
-        "hidden_elements": hidden,
-        "offscreen_elements": offscreen,
-        "nonprinting_chars": nonprinting,
-    }
-
-
-def _make_metadata(**kwargs):
+def _make_result(**overrides):
+    """Build a minimal pipeline result dict with sensible defaults."""
     base = {
-        "title": None, "author": None, "date": None,
-        "description": None, "canonical_url": None, "image": None,
+        "url": "https://example.com",
+        "fetched_at": "2026-03-11T12:00:00Z",
+        "body": "raw body",
+        "content_type": "html",
+        "risk_level": "OK",
+        "injection_matches": [],
+        "sanitization": {
+            "hidden_elements": 0,
+            "offscreen_elements": 0,
+            "nonprinting_chars": 0,
+        },
+        "metadata": None,
+        "links": None,
+        "links_mode": "domains",
+        "edge_cases": None,
+        "llms_txt_available": False,
+        "llms_txt_replaced": False,
+        "js_rendered": False,
+        "js_hint": False,
+        "retried": False,
+        "truncated_at": None,
     }
-    base.update(kwargs)
+    base.update(overrides)
     return base
 
 
-def _base_output(**kwargs):
-    defaults = {
-        "url": "https://example.com",
-        "fetch_timestamp": "2026-03-11T12:00:00Z",
-        "risk_result": _make_risk_result(),
-        "sanitize_tally": _make_tally(),
-        "salted_body": "<fetch-content-abc>body</fetch-content-abc>",
-    }
-    defaults.update(kwargs)
-    return output_formatter.format_output(**defaults)
+_DEFAULT_SALTED_BODY = "<fetch-content-abc>body</fetch-content-abc>"
+
+
+def _base_output(salted_body=_DEFAULT_SALTED_BODY, **overrides):
+    return output_formatter.format_output(_make_result(**overrides), salted_body)
 
 
 class TestFormatOutput:
@@ -55,7 +58,7 @@ class TestFormatOutput:
 
     def test_injection_warning_status(self):
         matches = [{"pattern": "test", "severity": "high", "snippet": "bad stuff"}]
-        output = _base_output(risk_result=_make_risk_result("HIGH", matches))
+        output = _base_output(risk_level="HIGH", injection_matches=matches)
         assert "INJECTION WARNING" in output
         assert "1 pattern match)" in output
 
@@ -64,11 +67,12 @@ class TestFormatOutput:
             {"pattern": "a", "severity": "high", "snippet": "x"},
             {"pattern": "b", "severity": "medium", "snippet": "y"},
         ]
-        output = _base_output(risk_result=_make_risk_result("HIGH", matches))
+        output = _base_output(risk_level="HIGH", injection_matches=matches)
         assert "2 pattern matches)" in output
 
     def test_sanitize_tally_in_output(self):
-        output = _base_output(sanitize_tally=_make_tally(hidden=3, offscreen=1, nonprinting=42))
+        tally = {"hidden_elements": 3, "offscreen_elements": 1, "nonprinting_chars": 42}
+        output = _base_output(sanitization=tally)
         assert "3 hidden elements" in output
         assert "1 offscreen elements" in output
         assert "42 non-printing chars" in output
@@ -83,7 +87,7 @@ class TestFormatOutput:
 
     def test_injection_details_section(self):
         matches = [{"pattern": "ignore_previous", "severity": "high", "snippet": "ignore all previous"}]
-        output = _base_output(risk_result=_make_risk_result("HIGH", matches))
+        output = _base_output(risk_level="HIGH", injection_matches=matches)
         assert "INJECTION DETAILS" in output
         assert "[HIGH] ignore_previous" in output
 
@@ -96,14 +100,12 @@ class TestMetadataSection:
     """Tests for metadata output section."""
 
     def test_metadata_section_present(self):
-        metadata = _make_metadata(title="Test")
-        output = _base_output(metadata=metadata)
+        output = _base_output(metadata={"title": "Test"})
         assert "--- METADATA ---" in output
 
     def test_metadata_json_formatted(self):
-        metadata = _make_metadata(title="Test Page", author="Alice")
+        metadata = {"title": "Test Page", "author": "Alice"}
         output = _base_output(metadata=metadata)
-        # Extract the JSON block
         start = output.index("--- METADATA ---\n") + len("--- METADATA ---\n")
         end = output.index("\n---", start)
         parsed = json.loads(output[start:end])
@@ -115,8 +117,7 @@ class TestMetadataSection:
         assert "METADATA" not in output
 
     def test_metadata_after_body(self):
-        metadata = _make_metadata(title="T")
-        output = _base_output(metadata=metadata)
+        output = _base_output(metadata={"title": "T"})
         body_pos = output.index("fetch-content-abc")
         meta_pos = output.index("METADATA")
         assert meta_pos > body_pos
@@ -126,8 +127,7 @@ class TestLinksSection:
     """Tests for external links output section."""
 
     def test_domains_mode(self):
-        links = ["example.org", "other.com"]
-        output = _base_output(links=links, links_mode="domains")
+        output = _base_output(links=["example.org", "other.com"], links_mode="domains")
         assert "--- EXTERNAL LINKS ---" in output
         assert "example.org" in output
         assert "other.com" in output
@@ -156,7 +156,6 @@ class TestLinksSection:
         }
         output = _base_output(links=links, links_mode="full")
         assert "https://example.org/page" in output
-        # No anchor text parentheses when empty
         assert "()" not in output
 
 
@@ -193,7 +192,9 @@ class TestPhase3Headers:
         assert "Renderer" not in output
 
     def test_edge_type_header(self):
-        output = _base_output(edge_type="bot_block", edge_detail="Cloudflare challenge detected")
+        output = _base_output(
+            edge_cases={"type": "bot_block", "detail": "Cloudflare challenge detected"},
+        )
         assert "Edge case: bot_block (Cloudflare challenge detected)" in output
 
     def test_no_edge_type_by_default(self):
@@ -219,8 +220,7 @@ class TestPhase3Headers:
     def test_all_phase3_headers_together(self):
         output = _base_output(
             js_rendered=True,
-            edge_type="bot_block",
-            edge_detail="Cloudflare challenge detected",
+            edge_cases={"type": "bot_block", "detail": "Cloudflare challenge detected"},
             retried=True,
         )
         assert "Renderer: Playwright" in output
@@ -228,7 +228,10 @@ class TestPhase3Headers:
         assert "Retried: yes" in output
 
     def test_phase3_headers_before_closing_separator(self):
-        output = _base_output(js_rendered=True, edge_type="paywall", edge_detail="Paywall pattern detected")
+        output = _base_output(
+            js_rendered=True,
+            edge_cases={"type": "paywall", "detail": "Paywall pattern detected"},
+        )
         lines = output.split("\n")
         renderer_idx = next(i for i, line in enumerate(lines) if "Renderer" in line)
         edge_idx = next(i for i, line in enumerate(lines) if "Edge case" in line)
@@ -242,12 +245,11 @@ class TestSectionOrder:
 
     def test_order_body_metadata_links_injection(self):
         matches = [{"pattern": "test", "severity": "medium", "snippet": "x"}]
-        metadata = _make_metadata(title="T")
-        links = ["other.com"]
         output = _base_output(
-            risk_result=_make_risk_result("MEDIUM", matches),
-            metadata=metadata,
-            links=links,
+            risk_level="MEDIUM",
+            injection_matches=matches,
+            metadata={"title": "T"},
+            links=["other.com"],
             links_mode="domains",
         )
         body_pos = output.index("fetch-content-abc")

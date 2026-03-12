@@ -94,8 +94,15 @@ def _handle_json(raw_body):
     return f"```json\n{formatted}\n```"
 
 
+_FEED_SNIFF_RE = re.compile(r"<(?:\w+:)?(?:rss|feed)[\s>]", re.IGNORECASE)
+
+
 def _handle_xml(raw_body):
     """Parse XML — render RSS/Atom feeds as markdown, else fenced block."""
+    # Sniff for feed tags before expensive parse — most XML isn't RSS/Atom
+    if not _FEED_SNIFF_RE.search(raw_body[:500]):
+        return f"```xml\n{raw_body}\n```"
+
     try:
         root = ET.fromstring(raw_body)  # noqa: S314
     except ET.ParseError:
@@ -104,15 +111,12 @@ def _handle_xml(raw_body):
     # Strip namespace for easier tag matching
     tag = re.sub(r"\{[^}]+\}", "", root.tag).lower()
 
-    # RSS feed: root is <rss>, items under <channel><item>
     if tag == "rss":
         return _render_rss(root)
-
-    # Atom feed: root is <feed>
     if tag == "feed":
         return _render_atom(root)
 
-    # Generic XML
+    # Matched sniff but root tag isn't rss/feed (e.g. nested element)
     return f"```xml\n{raw_body}\n```"
 
 
@@ -208,24 +212,28 @@ def _render_atom(root):
     return "\n".join(lines).strip()
 
 
+MAX_CSV_ROWS = 2000
+
+
 def _handle_csv(raw_body):
-    """Convert CSV to a markdown table."""
+    """Convert CSV to a markdown table (capped at MAX_CSV_ROWS data rows)."""
     try:
         reader = csv.reader(io.StringIO(raw_body))
-        rows = list(reader)
+        header = next(reader, None)
     except csv.Error:
         return raw_body
 
-    if not rows:
+    if not header:
         return raw_body
 
-    # First row is header
-    header = rows[0]
     lines = [
         "| " + " | ".join(header) + " |",
         "| " + " | ".join("---" for _ in header) + " |",
     ]
-    for row in rows[1:]:
+    for row_count, row in enumerate(reader):
+        if row_count >= MAX_CSV_ROWS:
+            lines.append(f"\n*({MAX_CSV_ROWS} row limit reached — output truncated)*")
+            break
         # Pad or trim to match header width
         padded = row + [""] * (len(header) - len(row))
         lines.append("| " + " | ".join(padded[: len(header)]) + " |")

@@ -7,7 +7,7 @@ class TestNullMetadata:
     """Ensure the null schema is correct."""
 
     def test_all_keys_present(self):
-        result = metadata_extractor._null_metadata()
+        result = metadata_extractor.null_metadata()
         for key in ("title", "author", "date", "description", "canonical_url", "image"):
             assert key in result
             assert result[key] is None

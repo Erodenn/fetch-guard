@@ -104,7 +104,7 @@ def fetch(
 
     # For strict mode + HIGH risk, raise so FastMCP marks the response as an error.
     # The caller still gets the full result in the error message.
-    if strict and result["risk_level"] == "HIGH":
+    if strict and result["risk_level"] == injection_guard.RISK_HIGH:
         raise ValueError(
             f"High-risk prompt injection detected ({len(result['injection_matches'])} matches). "
             f"URL: {result['url']}"
