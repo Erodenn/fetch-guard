@@ -1,0 +1,162 @@
+"""Core fetch pipeline — URL to structured result dict.
+
+Extracts the pipeline logic from the CLI entry point so it can be reused
+by both the CLI (fetch.py) and the MCP server (server.py).
+"""
+
+import os
+import sys
+from datetime import datetime, timezone
+
+# Ensure consistent UTF-8 output on Windows
+if not os.environ.get("PYTHONIOENCODING"):
+    os.environ["PYTHONIOENCODING"] = "utf-8"
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+if SCRIPT_DIR not in sys.path:
+    sys.path.insert(0, SCRIPT_DIR)
+
+import content_extractor
+import edge_detector
+import fetch_client
+import html_sanitizer
+import injection_guard
+import link_extractor
+import llms_txt_checker
+import metadata_extractor
+import playwright_fetcher
+
+
+class FetchError(Exception):
+    """Raised when the fetch pipeline encounters a non-recoverable error."""
+
+
+def run(url, timeout=180, max_words=None, strict=False, js=False, links="domains"):
+    """Execute the fetch pipeline.
+
+    Args:
+        url: URL to fetch.
+        timeout: Request timeout in seconds.
+        max_words: Optional word cap on extracted body content.
+        strict: If True, does not change the return value — callers check
+                risk_level themselves to decide on error behavior.
+        js: Use Playwright for JavaScript rendering.
+        links: "domains" or "full" link extraction mode.
+
+    Returns:
+        A structured dict with all pipeline results.
+
+    Raises:
+        FetchError: On network/fetch failures or empty responses.
+    """
+    js_rendered = js
+    edge_result = None
+    retried = False
+    js_hint = False
+
+    # 1. Check for /llms.txt
+    llms_result = llms_txt_checker.check(url)
+    llms_txt_available = llms_result["available"]
+    llms_txt_replaced = False
+
+    if llms_txt_available and llms_txt_checker.is_root_url(url):
+        llms_txt_replaced = True
+        raw_html = llms_result["content"]
+        final_url = llms_result["url"]
+    else:
+        # 2. Fetch — Playwright or static
+        fetcher = playwright_fetcher if js else fetch_client
+        result = fetcher.fetch(url, timeout=timeout)
+
+        if result["error"]:
+            raise FetchError(result["error"])
+
+        # 3. Edge detection
+        edge_result = edge_detector.detect(result)
+
+        # 4. Retry with browser UA if bot block detected (static only)
+        if edge_result["should_retry"] and not js:
+            retried = True
+            result = fetch_client.fetch(
+                url,
+                timeout=timeout,
+                user_agent=fetch_client.BROWSER_USER_AGENT,
+            )
+            if result["error"]:
+                raise FetchError(f"Error on retry: {result['error']}")
+            edge_result = edge_detector.detect(result)
+
+        # 5. Check we have HTML to work with
+        if not result["html"]:
+            raise FetchError("No response body received.")
+
+        raw_html = result["html"]
+        final_url = result["final_url"]
+
+    # 6. Sanitize
+    cleaned_html, tally = html_sanitizer.sanitize(raw_html)
+
+    # 7. Extract content
+    markdown = content_extractor.extract(cleaned_html)
+    if markdown is None:
+        if not js:
+            js_hint = True
+            markdown = "[No content could be extracted from this page using static fetching.]"
+        else:
+            msg = "No content could be extracted from the page."
+            if edge_result and edge_result["edge_type"]:
+                msg += f" Detected edge case: {edge_result['edge_type']} ({edge_result['detail']})"
+            raise FetchError(msg)
+
+    # 8. Extract metadata
+    metadata = metadata_extractor._null_metadata() if llms_txt_replaced else metadata_extractor.extract(cleaned_html)
+
+    # 9. Extract links
+    if llms_txt_replaced:
+        extracted_links = [] if links == "domains" else {}
+    elif links == "full":
+        extracted_links = link_extractor.extract_full(cleaned_html, url)
+    else:
+        extracted_links = link_extractor.extract_domains(cleaned_html, url)
+
+    # 10. Scan for injection
+    risk_result = injection_guard.scan(markdown)
+
+    # 11. Truncate
+    truncated_at = None
+    if max_words is not None:
+        words = markdown.split()
+        if len(words) > max_words:
+            markdown = " ".join(words[:max_words])
+            truncated_at = max_words
+
+    # 12. Build result
+    edge_cases = None
+    if edge_result and edge_result["edge_type"]:
+        edge_cases = {
+            "type": edge_result["edge_type"],
+            "detail": edge_result["detail"],
+        }
+
+    return {
+        "url": final_url,
+        "fetched_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "body": markdown,
+        "metadata": metadata,
+        "links": extracted_links,
+        "links_mode": links,
+        "risk_level": risk_result["risk"],
+        "injection_matches": risk_result["matches"],
+        "edge_cases": edge_cases,
+        "sanitization": {
+            "hidden_elements": tally.get("hidden_elements", 0),
+            "offscreen_elements": tally.get("offscreen_elements", 0),
+            "nonprinting_chars": tally.get("nonprinting_chars", 0),
+        },
+        "llms_txt_available": llms_txt_available,
+        "llms_txt_replaced": llms_txt_replaced,
+        "js_rendered": js_rendered,
+        "js_hint": js_hint,
+        "retried": retried,
+        "truncated_at": truncated_at,
+    }

@@ -9,7 +9,11 @@ dependencies = [
     "beautifulsoup4",
     "trafilatura",
     "extruct",
+    "mcp",
 ]
+
+[project.scripts]
+fetch-mcp = "fetch.scripts.server:main"
 
 [project.optional-dependencies]
 js = [
@@ -18,6 +22,12 @@ js = [
 dev = [
     "pytest",
     "ruff",
+]
+skill-only = [
+    "requests",
+    "beautifulsoup4",
+    "trafilatura",
+    "extruct",
 ]
 
 [tool.pytest.ini_options]
@@ -49,3 +59,5 @@ select = [
 "tests/**/*.py" = ["S101"]  # allow assert in tests
 "fetch/scripts/fetch.py" = ["E402"]  # imports after sys.path setup
 "fetch/scripts/injection_guard.py" = ["E402"]  # imports after sys.path setup
+"fetch/scripts/pipeline.py" = ["E402"]  # imports after sys.path setup
+"fetch/scripts/server.py" = ["E402"]  # imports after sys.path setup
