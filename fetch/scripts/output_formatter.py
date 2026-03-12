@@ -15,6 +15,11 @@ def format_output(
     links_mode=None,
     llms_txt_available=False,
     llms_txt_replaced=False,
+    js_rendered=False,
+    edge_type=None,
+    edge_detail=None,
+    retried=False,
+    js_hint=False,
 ):
     """Build the final output string.
 
@@ -57,6 +62,17 @@ def format_output(
         header_lines.append("Source: /llms.txt")
     elif llms_txt_available:
         header_lines.append("/llms.txt: available")
+
+    if js_rendered:
+        header_lines.append("Renderer: Playwright (JavaScript)")
+    if edge_type and edge_detail:
+        header_lines.append(f"Edge case: {edge_type} ({edge_detail})")
+    if retried:
+        header_lines.append("Retried: yes (alternative User-Agent)")
+    if js_hint:
+        header_lines.append(
+            "Hint: static extraction returned no content -- retry with --js for JavaScript rendering"
+        )
 
     header_lines.append("---")
     header = "\n".join(header_lines)

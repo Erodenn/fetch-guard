@@ -181,6 +181,62 @@ class TestLlmsTxtHeaders:
         assert "/llms.txt: available" not in output
 
 
+class TestPhase3Headers:
+    """Tests for Phase 3 header fields (JS rendering, edge cases, hints)."""
+
+    def test_js_rendered_header(self):
+        output = _base_output(js_rendered=True)
+        assert "Renderer: Playwright (JavaScript)" in output
+
+    def test_no_js_rendered_by_default(self):
+        output = _base_output()
+        assert "Renderer" not in output
+
+    def test_edge_type_header(self):
+        output = _base_output(edge_type="bot_block", edge_detail="Cloudflare challenge detected")
+        assert "Edge case: bot_block (Cloudflare challenge detected)" in output
+
+    def test_no_edge_type_by_default(self):
+        output = _base_output()
+        assert "Edge case" not in output
+
+    def test_retried_header(self):
+        output = _base_output(retried=True)
+        assert "Retried: yes (alternative User-Agent)" in output
+
+    def test_no_retried_by_default(self):
+        output = _base_output()
+        assert "Retried" not in output
+
+    def test_js_hint_header(self):
+        output = _base_output(js_hint=True)
+        assert "Hint: static extraction returned no content -- retry with --js" in output
+
+    def test_no_js_hint_by_default(self):
+        output = _base_output()
+        assert "Hint" not in output
+
+    def test_all_phase3_headers_together(self):
+        output = _base_output(
+            js_rendered=True,
+            edge_type="bot_block",
+            edge_detail="Cloudflare challenge detected",
+            retried=True,
+        )
+        assert "Renderer: Playwright" in output
+        assert "Edge case: bot_block" in output
+        assert "Retried: yes" in output
+
+    def test_phase3_headers_before_closing_separator(self):
+        output = _base_output(js_rendered=True, edge_type="paywall", edge_detail="Paywall pattern detected")
+        lines = output.split("\n")
+        renderer_idx = next(i for i, line in enumerate(lines) if "Renderer" in line)
+        edge_idx = next(i for i, line in enumerate(lines) if "Edge case" in line)
+        separator_idx = next(i for i, line in enumerate(lines) if line == "---" and i > 0)
+        assert renderer_idx < separator_idx
+        assert edge_idx < separator_idx
+
+
 class TestSectionOrder:
     """Test that output sections appear in the correct order."""
 

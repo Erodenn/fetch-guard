@@ -43,9 +43,20 @@ Optional: `playwright` (only for `--js` flag)
 
 The script checks for missing dependencies and prints install instructions. It will not produce a raw traceback.
 
+### Edge Case Detection
+
+The fetch pipeline detects three edge conditions and reports them in the status header:
+
+- **Bot block** — Cloudflare challenges, 403/429/503 with block page signatures. Automatically retried once with a browser-like User-Agent before reporting
+- **Paywall** — "subscribe to continue", paywall overlay CSS classes, subscription required patterns
+- **Login wall** — "sign in to continue", members-only patterns, redirects to `/login` or `/signin`
+
+When static extraction returns no content (and `--js` was not used), the output includes an escalation hint suggesting `--js` retry. No automatic fallback occurs.
+
 ### Notes
 
 - Does not render JavaScript by default — use `--js` to opt in
+- `--js` requires `playwright` and Chromium (`pip install playwright && playwright install chromium`)
 - Does not cache or store fetched content
 - Does not truncate to fit context windows — caller's responsibility
 - Checks for `/llms.txt` at the domain root before full fetch; uses it if available

@@ -17,7 +17,6 @@ class TestFetch:
         mock_response.text = "<html><body>Hello</body></html>"
         mock_response.url = "https://example.com"
         mock_response.apparent_encoding = "utf-8"
-        mock_response.raise_for_status = MagicMock()
         mock_get.return_value = mock_response
 
         result = fetch_client.fetch("https://example.com")
@@ -34,7 +33,6 @@ class TestFetch:
         mock_response.text = "<html></html>"
         mock_response.url = "https://example.com/final"
         mock_response.apparent_encoding = "utf-8"
-        mock_response.raise_for_status = MagicMock()
         mock_get.return_value = mock_response
 
         result = fetch_client.fetch("https://example.com/redirect")
@@ -62,16 +60,63 @@ class TestFetch:
         assert "Connection error" in result["error"]
 
     @patch("fetch_client.requests.get")
-    def test_http_error(self, mock_get):
+    def test_non_2xx_returns_body(self, mock_get):
+        """Non-2xx responses return the body for edge case detection."""
+        mock_response = MagicMock()
+        mock_response.status_code = 403
+        mock_response.text = "<html>Access Denied</html>"
+        mock_response.url = "https://example.com/blocked"
+        mock_response.apparent_encoding = "utf-8"
+        mock_get.return_value = mock_response
+
+        result = fetch_client.fetch("https://example.com/blocked")
+
+        assert result["status_code"] == 403
+        assert result["html"] == "<html>Access Denied</html>"
+        assert result["error"] is None
+
+    @patch("fetch_client.requests.get")
+    def test_404_returns_body(self, mock_get):
         mock_response = MagicMock()
         mock_response.status_code = 404
-        error = requests.exceptions.HTTPError(response=mock_response)
-        mock_get.side_effect = error
+        mock_response.text = "<html>Not Found</html>"
+        mock_response.url = "https://example.com/missing"
+        mock_response.apparent_encoding = "utf-8"
+        mock_get.return_value = mock_response
 
         result = fetch_client.fetch("https://example.com/missing")
 
         assert result["status_code"] == 404
-        assert "404" in result["error"]
+        assert result["html"] == "<html>Not Found</html>"
+        assert result["error"] is None
+
+    @patch("fetch_client.requests.get")
+    def test_custom_user_agent(self, mock_get):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = "<html></html>"
+        mock_response.url = "https://example.com"
+        mock_response.apparent_encoding = "utf-8"
+        mock_get.return_value = mock_response
+
+        fetch_client.fetch("https://example.com", user_agent="CustomBot/1.0")
+
+        _, kwargs = mock_get.call_args
+        assert kwargs["headers"]["User-Agent"] == "CustomBot/1.0"
+
+    @patch("fetch_client.requests.get")
+    def test_browser_user_agent_constant(self, mock_get):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = ""
+        mock_response.url = "https://example.com"
+        mock_response.apparent_encoding = "utf-8"
+        mock_get.return_value = mock_response
+
+        fetch_client.fetch("https://example.com", user_agent=fetch_client.BROWSER_USER_AGENT)
+
+        _, kwargs = mock_get.call_args
+        assert "Chrome" in kwargs["headers"]["User-Agent"]
 
     @patch("fetch_client.requests.get")
     def test_custom_timeout_passed(self, mock_get):
@@ -80,7 +125,6 @@ class TestFetch:
         mock_response.text = ""
         mock_response.url = "https://example.com"
         mock_response.apparent_encoding = "utf-8"
-        mock_response.raise_for_status = MagicMock()
         mock_get.return_value = mock_response
 
         fetch_client.fetch("https://example.com", timeout=30)
@@ -96,7 +140,6 @@ class TestFetch:
         mock_response.text = ""
         mock_response.url = "https://example.com"
         mock_response.apparent_encoding = "utf-8"
-        mock_response.raise_for_status = MagicMock()
         mock_get.return_value = mock_response
 
         fetch_client.fetch("https://example.com")
