@@ -42,6 +42,15 @@ NONPRINTING_CODEPOINTS = {
     "\ufff9",  # interlinear annotation anchor
     "\ufffa",  # interlinear annotation separator
     "\ufffb",  # interlinear annotation terminator
+    # Bidi isolates (category Cf — already caught by category check, explicit for documentation)
+    "\u2066",  # left-to-right isolate
+    "\u2067",  # right-to-left isolate
+    "\u2068",  # first strong isolate
+    "\u2069",  # pop directional isolate
+    # Unicode Tags (category Cf — already caught by category check, explicit for documentation)
+    "\U000E0001",  # language tag
+    "\U000E0020",  # tag space (start of ASCII-mapped range)
+    "\U000E007F",  # cancel tag
 }
 
 
@@ -58,6 +67,47 @@ def _matches_style_patterns(element, patterns):
     if not style:
         return False
     return any(p.search(style) for p in patterns)
+
+
+# Regex to extract CSS rules: selector { declarations }
+_CSS_RULE_RE = re.compile(
+    r"([^{}]+?)\s*\{([^}]*)\}",
+    re.DOTALL,
+)
+
+
+def _remove_style_hidden(soup):
+    """Remove elements targeted by CSS rules that hide content via <style> tags.
+
+    Parses <style> blocks, finds rules with display:none / visibility:hidden / opacity:0,
+    uses their selectors to find and decompose matching elements.
+    Returns count of removed elements.
+    """
+    count = 0
+    for style_tag in list(soup.find_all("style")):
+        css_text = style_tag.string
+        if not css_text:
+            continue
+        for selector_match in _CSS_RULE_RE.finditer(css_text):
+            selector = selector_match.group(1).strip()
+            declarations = selector_match.group(2)
+            # Check if this rule hides content
+            is_hidden = any(p.search(declarations) for p in HIDDEN_STYLE_PATTERNS)
+            if not is_hidden:
+                continue
+            # Try each comma-separated selector independently
+            for sel in selector.split(","):
+                sel = sel.strip()
+                if not sel:
+                    continue
+                try:
+                    for element in list(soup.select(sel)):
+                        element.decompose()
+                        count += 1
+                except Exception:  # noqa: S110
+                    # Skip invalid/unsupported CSS selectors (e.g. pseudo-elements)
+                    pass
+    return count
 
 
 def _strip_nonprinting(text):
@@ -95,6 +145,9 @@ def sanitize(html):
         elif _matches_style_patterns(element, OFFSCREEN_STYLE_PATTERNS):
             element.decompose()
             tally["offscreen_elements"] += 1
+
+    # Remove elements hidden via CSS class/ID rules in <style> tags
+    tally["hidden_elements"] += _remove_style_hidden(soup)
 
     # Remove aria-hidden elements
     for element in list(soup.find_all(attrs={"aria-hidden": "true"})):

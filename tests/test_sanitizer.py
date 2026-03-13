@@ -82,6 +82,72 @@ class TestSanitize:
         assert tally["hidden_elements"] == 3
 
 
+    def test_strips_bidi_isolates(self):
+        html = "<p>he\u2066ll\u2067o\u2069</p>"
+        cleaned, _soup, tally = html_sanitizer.sanitize(html)
+        assert "\u2066" not in cleaned
+        assert "\u2067" not in cleaned
+        assert "\u2069" not in cleaned
+        assert tally["nonprinting_chars"] >= 3
+
+    def test_strips_unicode_tags(self):
+        html = "<p>he\U000E0001ll\U000E0020o\U000E007F</p>"
+        cleaned, _soup, tally = html_sanitizer.sanitize(html)
+        assert "\U000E0001" not in cleaned
+        assert "\U000E0020" not in cleaned
+        assert "\U000E007F" not in cleaned
+        assert tally["nonprinting_chars"] >= 3
+
+    def test_removes_css_class_hidden(self):
+        html = """
+        <html><head><style>.hidden { display: none; }</style></head>
+        <body><div class="hidden">secret injection</div><p>visible</p></body></html>
+        """
+        cleaned, _soup, tally = html_sanitizer.sanitize(html)
+        assert "secret injection" not in cleaned
+        assert "visible" in cleaned
+        assert tally["hidden_elements"] >= 1
+
+    def test_removes_css_id_hidden(self):
+        html = """
+        <html><head><style>#sneaky { visibility: hidden; }</style></head>
+        <body><div id="sneaky">hidden text</div><p>ok</p></body></html>
+        """
+        cleaned, _soup, tally = html_sanitizer.sanitize(html)
+        assert "hidden text" not in cleaned
+        assert "ok" in cleaned
+        assert tally["hidden_elements"] >= 1
+
+    def test_removes_css_opacity_zero_class(self):
+        html = """
+        <html><head><style>.transparent { opacity: 0; }</style></head>
+        <body><span class="transparent">invisible</span><p>content</p></body></html>
+        """
+        cleaned, _soup, tally = html_sanitizer.sanitize(html)
+        assert "invisible" not in cleaned
+        assert "content" in cleaned
+
+    def test_css_hidden_preserves_visible_elements(self):
+        html = """
+        <html><head><style>.bad { display: none; } .good { color: red; }</style></head>
+        <body><div class="bad">hidden</div><div class="good">visible</div></body></html>
+        """
+        cleaned, _soup, tally = html_sanitizer.sanitize(html)
+        assert "hidden" not in cleaned
+        assert "visible" in cleaned
+
+    def test_css_hidden_multiple_selectors(self):
+        html = """
+        <html><head><style>.a, .b { display: none; }</style></head>
+        <body><div class="a">first-hidden</div><div class="b">second-hidden</div><p>three</p></body></html>
+        """
+        cleaned, _soup, tally = html_sanitizer.sanitize(html)
+        assert "first-hidden" not in cleaned
+        assert "second-hidden" not in cleaned
+        assert "three" in cleaned
+        assert tally["hidden_elements"] >= 2
+
+
 class TestStripNonprinting:
     """Tests for html_sanitizer._strip_nonprinting()."""
 

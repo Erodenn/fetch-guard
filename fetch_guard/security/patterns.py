@@ -78,13 +78,6 @@ PATTERNS = [
         "high",
     ),
 
-    # Base64 instruction blocks (suspicious long base64 strings)
-    (
-        "base64_block",
-        re.compile(r"[A-Za-z0-9+/]{50,500}={0,2}"),
-        "medium",
-    ),
-
     # Structural fakes — tags that mimic LLM conversation structure
     (
         "fake_system_tag",
@@ -102,3 +95,7 @@ PATTERNS = [
         "high",
     ),
 ]
+
+# Filtered list of high-severity patterns only — used by decode-and-scan
+# (no point decoding base64/hex to check for medium-severity roleplay patterns)
+HIGH_PATTERNS = [(name, pattern, severity) for name, pattern, severity in PATTERNS if severity == SEVERITY_HIGH]
