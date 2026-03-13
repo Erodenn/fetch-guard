@@ -1,7 +1,7 @@
 # Fetch Guard
 
 [![License: MIT](https://badgen.net/github/license/Erodenn/fetch-guard)](LICENSE)
-[![Python](https://img.shields.io/badge/python-3.9%2B-blue)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
 
 An [MCP](https://modelcontextprotocol.io/) server and CLI tool that fetches URLs and returns clean, LLM-ready markdown. Not a simple HTTP client, not a browser automation wrapper. A purpose-built extraction pipeline that sanitizes HTML, pulls structured metadata, detects prompt injection attempts, and handles the edge cases that break naive fetchers: bot blocks, paywalls, login walls, non-HTML content types, and pages that require JavaScript to render.
 
@@ -17,7 +17,7 @@ Three layers handle the injection defense specifically:
 
 ### Prerequisites
 
-- Python 3.9+
+- Python 3.10+
 - pip
 
 ### Install
@@ -204,7 +204,7 @@ pytest -m live
 ruff check fetch_guard/ tests/
 ```
 
-CI runs on push and PR to `main` via GitHub Actions, testing against Python 3.9, 3.12, and 3.13.
+CI runs on push and PR to `main` via GitHub Actions, testing against Python 3.10, 3.12, and 3.13.
 
 ## Acknowledgements
 
