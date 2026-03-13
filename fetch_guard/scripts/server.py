@@ -4,7 +4,7 @@ Exposes the fetch pipeline as an MCP tool via FastMCP (stdio transport).
 
 Usage:
     python server.py              # direct
-    fetch-mcp                     # via console_scripts entry point
+    fetch-guard                    # via console_scripts entry point
 """
 
 import os
@@ -59,7 +59,7 @@ from pipeline import run as pipeline_run
 # Server
 # ---------------------------------------------------------------------------
 
-mcp = FastMCP("fetch", json_response=True)
+mcp = FastMCP("fetch-guard", json_response=True)
 
 
 @mcp.tool()

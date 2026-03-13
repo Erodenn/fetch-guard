@@ -1,19 +1,21 @@
 ---
-name: fetch
+name: fetch-guard
 description: LLM-ready web fetching — extracts clean markdown and metadata from URLs with prompt injection defense
 version: 0.9.0
 location: user
 license: MIT
 ---
 
-# Fetch
+# Fetch Guard
 
 Fetch a URL and return clean, LLM-ready markdown with structured metadata and injection safety scanning.
+
+Also available as a PyPI package: `pip install fetch-guard`
 
 ## How to Run
 
 ```bash
-python .claude/skills/fetch/scripts/fetch.py <url> [options]
+python .claude/skills/fetch-guard/scripts/fetch.py <url> [options]
 ```
 
 ### Options

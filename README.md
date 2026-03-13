@@ -1,44 +1,87 @@
-# Fetch
+# Fetch Guard
 
-Fetch URLs and return clean, LLM-ready markdown with structured metadata and prompt injection defense. Works as a standalone CLI, a [Claude Code](https://github.com/anthropics/claude-code) skill, or an MCP server.
+[![License: MIT](https://badgen.net/github/license/Erodenn/fetch-guard)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.9%2B-blue)](https://www.python.org/)
 
-## What It Does
+An [MCP](https://modelcontextprotocol.io/) server and CLI tool that fetches URLs and returns clean, LLM-ready markdown. Not a simple HTTP client, not a browser automation wrapper. A purpose-built extraction pipeline that sanitizes HTML, pulls structured metadata, detects prompt injection attempts, and handles the edge cases that break naive fetchers: bot blocks, paywalls, login walls, non-HTML content types, and pages that require JavaScript to render.
 
-The pipeline takes a URL and produces structured output: sanitized markdown body, metadata (Open Graph, JSON-LD, meta tags), external links, and injection safety analysis. It handles HTML, JSON, XML/RSS, CSV, and plain text content types.
+The core problem is straightforward: LLMs need web content, but raw HTML is noisy and potentially hostile. Fetched pages can contain hidden text, invisible Unicode, off-screen elements, and outright prompt injection attempts embedded in the content itself. This pipeline strips all of that before the content reaches the model.
 
-Three layers of defense protect against prompt injection:
-- **Sanitization** strips hidden elements, offscreen content, and non-printing characters before extraction
-- **Injection scanning** checks extracted content against 15 regex patterns for known prompt injection techniques
-- **Session-salted tags** wrap the output body with random hex boundaries to prevent tag spoofing
+Three layers handle the injection defense specifically:
 
-Edge case detection identifies bot blocks, paywalls, and login walls. Bot blocks trigger one automatic retry with a browser User-Agent before reporting.
+1. **Pre-extraction sanitization** removes hidden elements (`display:none`, `visibility:hidden`, `opacity:0`), off-screen positioned content, `aria-hidden` elements, `<noscript>` tags, and 18 categories of non-printing Unicode characters. This happens before content extraction, so trafilatura never sees the attack vectors.
+2. **Pattern scanning** runs 15 compiled regex patterns against the extracted text, covering system prompt overrides, ignore-previous instructions, role injection, fake conversation tags, hidden instruction markers (`[INST]`, `<<SYS>>`), and suspicious base64 blocks.
+3. **Session-salted output wrapping** generates a random 8-character hex salt per invocation and wraps the body in `<fetch-content-{salt}>` tags. Since the salt is unpredictable, injected content cannot spoof the wrapper boundaries.
 
-## Install
+## Quick Start
 
-Python 3.9+. Install dependencies:
+### Prerequisites
+
+- Python 3.9+
+- pip
+
+### Install
 
 ```bash
-pip install requests beautifulsoup4 trafilatura extruct
-```
-
-For the MCP server, also install:
-
-```bash
-pip install mcp
+pip install fetch-guard
 ```
 
 For JavaScript rendering (optional):
 
 ```bash
-pip install playwright && playwright install chromium
+pip install 'fetch-guard[js]' && playwright install chromium
 ```
 
-## Usage
+### Configure Your MCP Client
+
+Add the following to your MCP client config. Works with Claude Code, Claude Desktop, Cursor, or any MCP-compatible client.
+
+**Via uvx (recommended):**
+
+```json
+{
+  "mcpServers": {
+    "fetch": {
+      "command": "uvx",
+      "args": ["fetch-guard"]
+    }
+  }
+}
+```
+
+**Via pip install:**
+
+```json
+{
+  "mcpServers": {
+    "fetch": {
+      "command": "fetch-guard"
+    }
+  }
+}
+```
+
+**From source:**
+
+```json
+{
+  "mcpServers": {
+    "fetch": {
+      "command": "python",
+      "args": ["path/to/fetch_guard/scripts/server.py"]
+    }
+  }
+}
+```
+
+### Verify
+
+Ask your AI assistant to fetch any URL. If it returns structured content with a status header, metadata, and risk assessment, you're connected.
 
 ### CLI
 
 ```bash
-python fetch/scripts/fetch.py <url> [options]
+python fetch_guard/scripts/fetch.py <url> [options]
 ```
 
 | Flag | Default | Description |
@@ -49,87 +92,115 @@ python fetch/scripts/fetch.py <url> [options]
 | `--strict` | off | Exit code 2 on high-risk injection |
 | `--links MODE` | `domains` | `domains` for unique external domains, `full` for all URLs with anchor text |
 
-### MCP Server
-
-Add to your MCP client config (e.g. `.mcp.json` for Claude Code):
-
-```json
-{
-  "mcpServers": {
-    "fetch": {
-      "command": "python",
-      "args": ["fetch/scripts/server.py"]
-    }
-  }
-}
-```
-
-Or use the console entry point after `pip install`:
-
-```json
-{
-  "mcpServers": {
-    "fetch": {
-      "command": "fetch-mcp"
-    }
-  }
-}
-```
-
-The server exposes a single `fetch` tool over stdio with the same parameters as the CLI. Returns structured JSON.
-
 ### Claude Code Skill
 
-Copy the `fetch/` directory to `.claude/skills/fetch/` in your project. The skill is defined in `fetch/SKILL.md`.
+Copy the `fetch_guard/` directory to `.claude/skills/fetch-guard/` in your project. The skill definition lives in `fetch_guard/SKILL.md`.
+
+## What It Does
+
+The pipeline runs a 13-step sequence from URL to structured output:
+
+1. **`/llms.txt` preflight.** Checks the domain root for `/llms.txt` before the full fetch. If the requested URL is a domain root and `/llms.txt` exists, that content replaces the normal HTML pipeline entirely. This respects the emerging convention for LLM-friendly site summaries.
+
+2. **Fetch.** Static HTTP request via `requests`, or Playwright-driven browser rendering if `--js` is set. No automatic fallback between the two: `--js` is explicit opt-in.
+
+3. **Edge detection.** Classifies the response for bot blocks (Cloudflare challenges, 403/429/503 with block signatures, LinkedIn's custom 999), paywalls (subscription prompts, premium overlays), and login walls (sign-in redirects, members-only patterns).
+
+4. **Automatic retry.** Bot blocks trigger one retry with a full Chrome User-Agent string before reporting. Paywalls and login walls are reported immediately with no retry.
+
+5. **Content-type routing.** Non-HTML responses get a fast path: JSON is rendered as a fenced code block, RSS/Atom feeds are parsed into structured summaries, CSV becomes a markdown table (capped at 2,000 rows), and plain text passes through directly. Binary content types are rejected.
+
+6. **HTML sanitization.** Strips hidden elements, off-screen positioned content, `aria-hidden` nodes, `<noscript>` tags, and non-printing Unicode. Returns a tally of everything removed.
+
+7. **Content extraction.** trafilatura converts sanitized HTML to markdown with link preservation.
+
+8. **Metadata extraction.** Pulls title, author, date, description, canonical URL, and image from three sources in priority order: JSON-LD, Open Graph, then meta tags.
+
+9. **Link extraction.** Two modes: `domains` returns a sorted list of unique external domains, `full` returns all external URLs grouped by domain with anchor text.
+
+10. **Injection scanning.** Runs all 15 patterns against the extracted markdown. Each match records the pattern name, severity (high/medium), and a 60-character context snippet.
+
+11. **Truncation.** If `--max-words` is set, the body is truncated after extraction but before output wrapping.
+
+12. **Salt wrapping.** The body gets wrapped in session-salted tags for defense-in-depth.
+
+13. **Output formatting.** CLI produces five plaintext sections (status header, body, metadata, links, injection details). MCP server returns a structured JSON dict with the same data.
 
 ## Output
 
-CLI output contains five sections:
+### CLI
 
-1. **Status header**: URL, timestamp, risk flag (OK / INJECTION WARNING), sanitization tally, edge case info
-2. **Body**: clean markdown wrapped in session-salted tags
-3. **Metadata**: structured JSON (title, author, date, canonical URL, Open Graph, JSON-LD)
-4. **External links**: domain list or full URL breakdown
-5. **Injection details**: pattern match specifics (only present when injection detected)
+Five sections, printed to stdout:
 
-MCP server returns the same data as a structured JSON dict.
+- **Status header:** URL, fetch timestamp, risk flag (`OK` or `INJECTION WARNING`), sanitization tally, edge case info if detected
+- **Body:** clean markdown wrapped in `<fetch-content-{salt}>` tags
+- **Metadata:** JSON block with title, author, date, description, canonical URL, image
+- **External links:** domain list or full URL breakdown by domain
+- **Injection details:** pattern name, severity, and context snippet for each match (only present when patterns detected)
+
+### MCP Server
+
+Returns a structured dict:
+
+```
+url, fetched_at, body, content_type, metadata, links, links_mode,
+risk_level, injection_matches, edge_cases, sanitization,
+llms_txt_available, llms_txt_replaced, js_rendered, js_hint,
+retried, truncated_at
+```
+
+When `--strict` is set and the risk level is `HIGH`, the CLI exits with code 2 and the MCP server raises an error response. The full result is still available in both cases.
 
 ## Exit Codes
 
 | Code | Meaning |
 |---|---|
 | 0 | Success |
-| 1 | Fetch error (network failure, no content) |
+| 1 | Fetch error (network failure, empty response, binary content) |
 | 2 | High-risk injection detected (`--strict` only) |
 
 ## Architecture
 
 ```
-URL → FetchClient → EdgeDetector → HtmlSanitizer → ContentExtractor
-    → MetadataExtractor → InjectionGuard → OutputFormatter → stdout
+fetch_guard/scripts/
+├── fetch.py                # CLI entry point — arg parsing, pipeline call, output
+├── server.py               # MCP server — FastMCP wrapper over the same pipeline
+├── pipeline.py             # Core orchestration — 13-step sequence, shared by CLI and server
+├── fetch_client.py         # Static HTTP fetch via requests
+├── playwright_fetcher.py   # JS rendering via Playwright (optional)
+├── llms_txt_checker.py     # /llms.txt preflight check
+├── edge_detector.py        # Bot block, paywall, login wall classification
+├── html_sanitizer.py       # Hidden element and non-printing character removal
+├── content_extractor.py    # trafilatura wrapper — HTML to markdown
+├── content_type_handler.py # Non-HTML routing — JSON, XML/RSS, CSV, plain text
+├── metadata_extractor.py   # JSON-LD, Open Graph, meta tag extraction
+├── link_extractor.py       # External link extraction (domain list or full URLs)
+├── injection_guard.py      # Salt generation, content wrapping, pattern scanning
+├── injection_patterns.py   # 15 compiled regex patterns — single source of truth
+└── output_formatter.py     # CLI output assembly
 ```
 
-All pipeline modules live in `fetch/scripts/`. Each module is a single-responsibility unit with a public function as its interface. `pipeline.py` contains the shared pipeline logic used by both the CLI (`fetch.py`) and the MCP server (`server.py`).
-
-The pipeline checks for `/llms.txt` at the domain root before full fetch. If the URL is a domain root and `/llms.txt` exists, that content replaces the normal fetch.
+Each module is a single-responsibility unit with a public function as its interface. `pipeline.py` is the shared core: both `fetch.py` (CLI) and `server.py` (MCP) call `pipeline.run()` and handle the result in their own way.
 
 ## Development
 
 ```bash
-# Run tests (217 tests, all mocked)
+# Run tests (217 unit tests, all mocked — no network calls)
 pytest
 
 # Run live integration tests (hits real URLs)
 pytest -m live
 
 # Lint
-ruff check fetch/scripts/ tests/
+ruff check fetch_guard/scripts/ tests/
 ```
 
-## License
-
-MIT
+CI runs on push and PR to `main` via GitHub Actions, testing against Python 3.9, 3.12, and 3.13.
 
 ## Acknowledgements
 
-Built with [Claude Code](https://github.com/anthropics/claude-code).
+Developed with [Claude Code](https://claude.ai/code).
+
+## License
+
+[MIT](LICENSE)

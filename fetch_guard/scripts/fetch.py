@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fetch skill entry point — CLI arg parsing, dependency checks, pipeline orchestration.
+"""Fetch Guard CLI entry point — CLI arg parsing, dependency checks, pipeline orchestration.
 
 Usage:
     python fetch.py <url> [--timeout N] [--max-words N] [--strict] [--links domains|full]
