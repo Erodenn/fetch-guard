@@ -40,5 +40,8 @@ Desktop.ini
 # Plans / scope docs
 plans/
 
+# Node
+node_modules/
+
 # AI workspace
 CLAUDE.md
