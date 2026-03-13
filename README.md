@@ -3,7 +3,6 @@
 [![PyPI](https://img.shields.io/pypi/v/fetch-guard)](https://pypi.org/project/fetch-guard/)
 [![CI](https://github.com/Erodenn/fetch-guard/actions/workflows/ci.yml/badge.svg)](https://github.com/Erodenn/fetch-guard/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/pypi/pyversions/fetch-guard)](https://pypi.org/project/fetch-guard/)
-[![Downloads](https://img.shields.io/pypi/dm/fetch-guard)](https://pypi.org/project/fetch-guard/)
 [![License: MIT](https://badgen.net/github/license/Erodenn/fetch-guard)](LICENSE)
 
 An [MCP](https://modelcontextprotocol.io/) server and CLI tool that fetches URLs and returns clean, LLM-ready markdown. Not a simple HTTP client, not a browser automation wrapper. A purpose-built extraction pipeline that sanitizes HTML, pulls structured metadata, detects prompt injection attempts, and handles the edge cases that break naive fetchers: bot blocks, paywalls, login walls, non-HTML content types, and pages that require JavaScript to render.
