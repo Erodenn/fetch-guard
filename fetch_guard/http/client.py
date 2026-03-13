@@ -10,7 +10,7 @@ BROWSER_USER_AGENT = (
 )
 
 
-def _error_result(url, error):
+def error_result(url, error):
     """Build a standard error result dict."""
     return {
         "status_code": None,
@@ -44,7 +44,11 @@ def fetch(url, timeout=180, user_agent=None):
             },
             allow_redirects=True,
         )
-        response.encoding = response.apparent_encoding or "utf-8"
+        # Only run charset detection if the server didn't declare one.
+        # requests defaults to ISO-8859-1 for text/* without explicit charset.
+        declared = response.encoding
+        if not declared or declared.lower() == "iso-8859-1":
+            response.encoding = response.apparent_encoding or "utf-8"
         return {
             "status_code": response.status_code,
             "html": response.text,
@@ -53,8 +57,8 @@ def fetch(url, timeout=180, user_agent=None):
             "error": None,
         }
     except requests.exceptions.Timeout:
-        return _error_result(url, f"Request timed out after {timeout} seconds")
+        return error_result(url, f"Request timed out after {timeout} seconds")
     except requests.exceptions.ConnectionError as e:
-        return _error_result(url, f"Connection error: {e}")
+        return error_result(url, f"Connection error: {e}")
     except requests.exceptions.RequestException as e:
-        return _error_result(url, str(e))
+        return error_result(url, str(e))

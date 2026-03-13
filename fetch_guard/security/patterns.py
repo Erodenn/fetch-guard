@@ -7,6 +7,10 @@ Severity levels: "high" (system prompt overrides, ignore-previous)
 
 import re
 
+# Severity constants — single source of truth for pattern severity values
+SEVERITY_HIGH = "high"
+SEVERITY_MEDIUM = "medium"
+
 PATTERNS = [
     # System prompt overrides
     (

@@ -6,42 +6,17 @@ Usage:
 """
 
 import argparse
-import os
 import sys
 
-# Ensure consistent UTF-8 output on Windows
-if not os.environ.get("PYTHONIOENCODING"):
-    os.environ["PYTHONIOENCODING"] = "utf-8"
+from . import check_deps
+
+check_deps()
+
+# Ensure consistent UTF-8 CLI output on Windows
 if sys.stdout.encoding != "utf-8":
     import io
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
-
-# ---------------------------------------------------------------------------
-# Dependency check
-# ---------------------------------------------------------------------------
-
-REQUIRED_DEPS = {
-    "requests": "requests",
-    "bs4": "beautifulsoup4",
-    "trafilatura": "trafilatura",
-    "extruct": "extruct",
-}
-
-missing = []
-for module, package in REQUIRED_DEPS.items():
-    try:
-        __import__(module)
-    except ImportError:
-        missing.append(package)
-
-if missing:
-    print(
-        f"Missing dependencies: {', '.join(missing)}\n"
-        f"Install with: pip install {' '.join(missing)}",
-        file=sys.stderr,
-    )
-    sys.exit(1)
 
 # ---------------------------------------------------------------------------
 # Local imports (after dependency check so errors are clear)

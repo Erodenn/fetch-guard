@@ -7,39 +7,9 @@ Usage:
     fetch-guard                    # via console_scripts entry point
 """
 
-import os
-import sys
+from . import check_deps
 
-# Ensure consistent UTF-8 output on Windows
-if not os.environ.get("PYTHONIOENCODING"):
-    os.environ["PYTHONIOENCODING"] = "utf-8"
-
-# ---------------------------------------------------------------------------
-# Dependency check
-# ---------------------------------------------------------------------------
-
-REQUIRED_DEPS = {
-    "requests": "requests",
-    "bs4": "beautifulsoup4",
-    "trafilatura": "trafilatura",
-    "extruct": "extruct",
-    "mcp": "mcp",
-}
-
-_missing = []
-for _module, _package in REQUIRED_DEPS.items():
-    try:
-        __import__(_module)
-    except ImportError:
-        _missing.append(_package)
-
-if _missing:
-    print(
-        f"Missing dependencies: {', '.join(_missing)}\n"
-        f"Install with: pip install {' '.join(_missing)}",
-        file=sys.stderr,
-    )
-    sys.exit(1)
+check_deps(extra={"mcp": "mcp"})
 
 # ---------------------------------------------------------------------------
 # Imports (after dependency check)

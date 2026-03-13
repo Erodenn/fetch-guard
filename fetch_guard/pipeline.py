@@ -4,12 +4,7 @@ Extracts the pipeline logic from the CLI entry point so it can be reused
 by both the CLI (fetch.py) and the MCP server (server.py).
 """
 
-import os
 from datetime import datetime, timezone
-
-# Ensure consistent UTF-8 output on Windows
-if not os.environ.get("PYTHONIOENCODING"):
-    os.environ["PYTHONIOENCODING"] = "utf-8"
 
 from .extraction import content as content_extractor
 from .extraction import content_type as content_type_handler
@@ -33,9 +28,9 @@ def _truncate(text, max_words):
     """Truncate text to a word limit. Returns (text, truncated_at)."""
     if max_words is None:
         return text, None
-    words = text.split()
-    if len(words) > max_words:
-        return " ".join(words[:max_words]), max_words
+    parts = text.split(maxsplit=max_words)
+    if len(parts) > max_words:
+        return " ".join(parts[:max_words]), max_words
     return text, None
 
 
@@ -234,11 +229,7 @@ def run(url, timeout=180, max_words=None, strict=False, js=False, links="domains
         links_mode=links,
         risk_result=risk_result,
         edge_result=edge_result,
-        sanitization={
-            "hidden_elements": tally.get("hidden_elements", 0),
-            "offscreen_elements": tally.get("offscreen_elements", 0),
-            "nonprinting_chars": tally.get("nonprinting_chars", 0),
-        },
+        sanitization=tally,
         llms_txt_available=llms_txt_available,
         llms_txt_replaced=llms_txt_replaced,
         js_rendered=js_rendered,

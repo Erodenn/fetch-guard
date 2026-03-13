@@ -2,7 +2,7 @@
 
 import json
 
-from ..security.guard import RISK_OK
+from ..security import RISK_OK
 
 
 def format_output(result, salted_body):

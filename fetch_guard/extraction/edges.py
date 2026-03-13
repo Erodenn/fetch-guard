@@ -49,7 +49,6 @@ _LOGIN_URL_PATTERNS = re.compile(
     re.IGNORECASE,
 )
 
-# Status codes that suggest bot blocking
 # Status codes that suggest bot blocking (999 = LinkedIn custom denial)
 _BOT_BLOCK_STATUSES = {401, 403, 429, 503, 999}
 

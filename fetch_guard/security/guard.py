@@ -2,7 +2,7 @@
 
 import secrets
 
-from .patterns import PATTERNS
+from .patterns import PATTERNS, SEVERITY_HIGH
 
 CONTEXT_CHARS = 60
 
@@ -10,10 +10,6 @@ CONTEXT_CHARS = 60
 RISK_OK = "OK"
 RISK_MEDIUM = "MEDIUM"
 RISK_HIGH = "HIGH"
-
-# Pattern severity levels (must match values in injection_patterns.py)
-SEVERITY_HIGH = "high"
-SEVERITY_MEDIUM = "medium"
 
 
 def generate_salt():

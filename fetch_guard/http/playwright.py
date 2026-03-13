@@ -1,6 +1,8 @@
 """Playwright-based JS rendering — headless Chromium fetch for JavaScript-heavy pages."""
 
-from .client import _error_result
+import contextlib
+
+from .client import error_result
 
 
 def fetch(url, timeout=180):
@@ -16,7 +18,7 @@ def fetch(url, timeout=180):
         from playwright.sync_api import TimeoutError as PWTimeoutError
         from playwright.sync_api import sync_playwright
     except ImportError:
-        return _error_result(
+        return error_result(
             url,
             "Playwright is not installed. "
             "Install with: pip install playwright && playwright install chromium",
@@ -32,7 +34,6 @@ def fetch(url, timeout=180):
             response = page.goto(url, wait_until="domcontentloaded", timeout=timeout_ms)
 
             # Try networkidle — if it times out, use whatever rendered so far
-            import contextlib
             with contextlib.suppress(PWTimeoutError):
                 page.wait_for_load_state("networkidle", timeout=timeout_ms)
 
@@ -53,6 +54,6 @@ def fetch(url, timeout=180):
                 "error": None,
             }
     except PWTimeoutError:
-        return _error_result(url, f"Playwright navigation timed out after {timeout} seconds")
+        return error_result(url, f"Playwright navigation timed out after {timeout} seconds")
     except Exception as e:
-        return _error_result(url, f"Playwright error: {e}")
+        return error_result(url, f"Playwright error: {e}")

@@ -97,6 +97,11 @@ def _handle_json(raw_body):
 _FEED_SNIFF_RE = re.compile(r"<(?:\w+:)?(?:rss|feed)[\s>]", re.IGNORECASE)
 
 
+def _strip_ns(tag):
+    """Remove XML namespace prefix from a tag."""
+    return re.sub(r"\{[^}]+\}", "", tag)
+
+
 def _handle_xml(raw_body):
     """Parse XML — render RSS/Atom feeds as markdown, else fenced block."""
     # Sniff for feed tags before expensive parse — most XML isn't RSS/Atom
@@ -109,7 +114,7 @@ def _handle_xml(raw_body):
         return f"```xml\n{raw_body}\n```"
 
     # Strip namespace for easier tag matching
-    tag = re.sub(r"\{[^}]+\}", "", root.tag).lower()
+    tag = _strip_ns(root.tag).lower()
 
     if tag == "rss":
         return _render_rss(root)
@@ -118,11 +123,6 @@ def _handle_xml(raw_body):
 
     # Matched sniff but root tag isn't rss/feed (e.g. nested element)
     return f"```xml\n{raw_body}\n```"
-
-
-def _strip_ns(tag):
-    """Remove XML namespace prefix from a tag."""
-    return re.sub(r"\{[^}]+\}", "", tag)
 
 
 def _find_child_text(element, local_name):
