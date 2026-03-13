@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "fetch-guard"
-version = "0.9.0"
+version = "1.0.0"
 description = "Fetch URLs and return clean, LLM-ready markdown with metadata and prompt injection defense"
 requires-python = ">=3.10"
 license = "MIT"
@@ -13,7 +13,7 @@ authors = [
     { name = "Owen Sterling", email = "owen@erodenn.com" },
 ]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",

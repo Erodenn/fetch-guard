@@ -11,8 +11,8 @@ The core problem is straightforward: LLMs need web content, but raw HTML is nois
 
 Three layers handle the injection defense specifically:
 
-1. **Pre-extraction sanitization** removes hidden elements (`display:none`, `visibility:hidden`, `opacity:0`), off-screen positioned content, `aria-hidden` elements, `<noscript>` tags, and 18 categories of non-printing Unicode characters. This happens before content extraction, so trafilatura never sees the attack vectors.
-2. **Pattern scanning** runs 15 compiled regex patterns against the extracted text, covering system prompt overrides, ignore-previous instructions, role injection, fake conversation tags, hidden instruction markers (`[INST]`, `<<SYS>>`), and suspicious base64 blocks.
+1. **Pre-extraction sanitization** removes hidden elements (`display:none`, `visibility:hidden`, `opacity:0`), elements hidden via CSS class/ID rules in `<style>` tags, off-screen positioned content, `aria-hidden` elements, `<noscript>` tags, and 26 categories of non-printing Unicode characters including bidi isolates and Unicode Tags. This happens before content extraction, so trafilatura never sees the attack vectors.
+2. **Pattern scanning** runs a three-phase scan against the extracted text. Phase one applies 14 compiled regex patterns covering system prompt overrides, ignore-previous instructions, role injection, fake conversation tags, and hidden instruction markers. Phase two normalizes the text via NFKC and confusable-character mapping, then rescans to catch homoglyph bypasses (Cyrillic characters substituted for Latin, etc.). Phase three finds base64 and hex encoded blocks, decodes them, and scans the decoded content with high-severity patterns.
 3. **Session-salted output wrapping** generates a random 8-character hex salt per invocation and wraps the body in `<fetch-content-{salt}>` tags. Since the salt is unpredictable, injected content cannot spoof the wrapper boundaries.
 
 ## One Tool
@@ -138,7 +138,7 @@ The pipeline runs a 13-step sequence from URL to structured output:
 
 9. **Link extraction.** Two modes: `domains` returns a sorted list of unique external domains, `full` returns all external URLs grouped by domain with anchor text.
 
-10. **Injection scanning.** Runs all 15 patterns against the extracted markdown. Each match records the pattern name, severity (high/medium), and a 60-character context snippet.
+10. **Injection scanning.** Three-phase scan: original text against all 14 patterns, NFKC-normalized text for homoglyph bypasses, and decode-and-scan for base64/hex encoded payloads. Each match records the pattern name, severity (high/medium), and a 60-character context snippet.
 
 11. **Truncation.** If `--max-words` is set, the body is truncated after extraction but before output wrapping.
 
@@ -200,9 +200,10 @@ fetch_guard/
 │   └── metadata.py         # JSON-LD, Open Graph, meta tag extraction
 │
 ├── security/               # Injection defense
-│   ├── guard.py            # Salt generation, content wrapping, pattern scanning
-│   ├── patterns.py         # 15 compiled regex patterns — single source of truth
-│   └── sanitizer.py        # Hidden element and non-printing character removal
+│   ├── guard.py            # Salt generation, content wrapping, three-phase pattern scanning
+│   ├── normalize.py        # NFKC + confusable-character normalization for homoglyph detection
+│   ├── patterns.py         # 14 compiled regex patterns — single source of truth
+│   └── sanitizer.py        # Hidden element, CSS rule, and non-printing character removal
 │
 └── output/                 # Formatting
     └── formatter.py        # CLI output assembly
@@ -213,7 +214,7 @@ Each module is a single-responsibility unit with a public function as its interf
 ## Development
 
 ```bash
-# Run tests (217 unit tests, all mocked — no network calls)
+# Run tests (239 unit tests, all mocked — no network calls)
 pytest
 
 # Run live integration tests (hits real URLs)
