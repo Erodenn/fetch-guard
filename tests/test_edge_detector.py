@@ -1,6 +1,6 @@
 """Tests for edge_detector module."""
 
-import edge_detector
+from fetch_guard.scripts import edge_detector
 
 
 def _make_result(status_code=200, html="", final_url="https://example.com"):

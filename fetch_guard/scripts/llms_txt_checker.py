@@ -4,7 +4,7 @@ from urllib.parse import urlparse
 
 import requests
 
-from fetch_client import USER_AGENT
+from .fetch_client import USER_AGENT
 
 MAX_TIMEOUT = 5
 

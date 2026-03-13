@@ -3,9 +3,8 @@
 from unittest.mock import patch
 
 import pytest
-
-import server
-from pipeline import FetchError
+from fetch_guard.scripts import server
+from fetch_guard.scripts.pipeline import FetchError
 
 # ---------------------------------------------------------------------------
 # Tool function tests (call the function directly, not through MCP transport)
@@ -14,7 +13,7 @@ from pipeline import FetchError
 class TestFetchTool:
     """Tests for the fetch MCP tool handler."""
 
-    @patch("server.pipeline_run")
+    @patch("fetch_guard.scripts.server.pipeline_run")
     def test_returns_structured_dict(self, mock_run):
         mock_run.return_value = {
             "url": "https://example.com",
@@ -56,7 +55,7 @@ class TestFetchTool:
             links="domains",
         )
 
-    @patch("server.pipeline_run")
+    @patch("fetch_guard.scripts.server.pipeline_run")
     def test_passes_all_parameters(self, mock_run):
         mock_run.return_value = {
             "url": "https://example.com",
@@ -88,14 +87,14 @@ class TestFetchTool:
             links="full",
         )
 
-    @patch("server.pipeline_run")
+    @patch("fetch_guard.scripts.server.pipeline_run")
     def test_fetch_error_raises_value_error(self, mock_run):
         mock_run.side_effect = FetchError("Connection refused")
 
         with pytest.raises(ValueError, match="Connection refused"):
             server.fetch("https://example.com")
 
-    @patch("server.pipeline_run")
+    @patch("fetch_guard.scripts.server.pipeline_run")
     def test_strict_high_risk_raises_value_error(self, mock_run):
         mock_run.return_value = {
             "url": "https://evil.com",
@@ -121,7 +120,7 @@ class TestFetchTool:
         with pytest.raises(ValueError, match="High-risk prompt injection"):
             server.fetch("https://evil.com", strict=True)
 
-    @patch("server.pipeline_run")
+    @patch("fetch_guard.scripts.server.pipeline_run")
     def test_strict_false_high_risk_returns_normally(self, mock_run):
         """Without strict=True, HIGH risk is returned as data, not an error."""
         mock_run.return_value = {
@@ -150,7 +149,7 @@ class TestFetchTool:
         assert result["risk_level"] == "HIGH"
         assert len(result["injection_matches"]) == 1
 
-    @patch("server.pipeline_run")
+    @patch("fetch_guard.scripts.server.pipeline_run")
     def test_medium_risk_not_error_even_strict(self, mock_run):
         """MEDIUM risk should never raise, even in strict mode."""
         mock_run.return_value = {
@@ -178,7 +177,7 @@ class TestFetchTool:
 
         assert result["risk_level"] == "MEDIUM"
 
-    @patch("server.pipeline_run")
+    @patch("fetch_guard.scripts.server.pipeline_run")
     def test_body_is_salted(self, mock_run):
         """Body field should be wrapped in session-salted tags."""
         mock_run.return_value = {

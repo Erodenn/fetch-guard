@@ -47,13 +47,9 @@ if missing:
 # Local imports (after dependency check so errors are clear)
 # ---------------------------------------------------------------------------
 
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, SCRIPT_DIR)
-
-import injection_guard
-import output_formatter
-from pipeline import FetchError
-from pipeline import run as pipeline_run
+from . import injection_guard, output_formatter
+from .pipeline import FetchError
+from .pipeline import run as pipeline_run
 
 # ---------------------------------------------------------------------------
 # CLI

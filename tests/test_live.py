@@ -8,8 +8,7 @@ signals but never assert specific page content (too fragile for real sites).
 """
 
 import pytest
-
-from pipeline import FetchError, run
+from fetch_guard.scripts.pipeline import FetchError, run
 
 # ---------------------------------------------------------------------------
 # Structural constants

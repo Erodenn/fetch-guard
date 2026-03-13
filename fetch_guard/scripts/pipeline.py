@@ -5,27 +5,24 @@ by both the CLI (fetch.py) and the MCP server (server.py).
 """
 
 import os
-import sys
 from datetime import datetime, timezone
 
 # Ensure consistent UTF-8 output on Windows
 if not os.environ.get("PYTHONIOENCODING"):
     os.environ["PYTHONIOENCODING"] = "utf-8"
 
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-if SCRIPT_DIR not in sys.path:
-    sys.path.insert(0, SCRIPT_DIR)
-
-import content_extractor
-import content_type_handler
-import edge_detector
-import fetch_client
-import html_sanitizer
-import injection_guard
-import link_extractor
-import llms_txt_checker
-import metadata_extractor
-import playwright_fetcher
+from . import (
+    content_extractor,
+    content_type_handler,
+    edge_detector,
+    fetch_client,
+    html_sanitizer,
+    injection_guard,
+    link_extractor,
+    llms_txt_checker,
+    metadata_extractor,
+    playwright_fetcher,
+)
 
 _ZERO_TALLY = {"hidden_elements": 0, "offscreen_elements": 0, "nonprinting_chars": 0}
 

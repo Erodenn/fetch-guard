@@ -45,15 +45,11 @@ if _missing:
 # Imports (after dependency check)
 # ---------------------------------------------------------------------------
 
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-if SCRIPT_DIR not in sys.path:
-    sys.path.insert(0, SCRIPT_DIR)
-
 from mcp.server.fastmcp import FastMCP
 
-import injection_guard
-from pipeline import FetchError
-from pipeline import run as pipeline_run
+from . import injection_guard
+from .pipeline import FetchError
+from .pipeline import run as pipeline_run
 
 # ---------------------------------------------------------------------------
 # Server

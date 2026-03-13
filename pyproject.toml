@@ -43,13 +43,6 @@ dev = [
     "pytest",
     "ruff",
 ]
-skill-only = [
-    "requests",
-    "beautifulsoup4",
-    "trafilatura",
-    "extruct",
-]
-
 [project.urls]
 Homepage = "https://github.com/Erodenn/fetch-guard"
 Repository = "https://github.com/Erodenn/fetch-guard"
@@ -57,7 +50,6 @@ Issues = "https://github.com/Erodenn/fetch-guard/issues"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["fetch_guard/scripts"]
 addopts = "-m 'not live'"
 markers = [
     "live: hits real network (excluded by default)",
@@ -87,7 +79,5 @@ select = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = ["S101"]  # allow assert in tests
-"fetch_guard/scripts/fetch.py" = ["E402"]  # imports after sys.path setup
-"fetch_guard/scripts/injection_guard.py" = ["E402"]  # imports after sys.path setup
-"fetch_guard/scripts/pipeline.py" = ["E402"]  # imports after sys.path setup
-"fetch_guard/scripts/server.py" = ["E402"]  # imports after sys.path setup
+"fetch_guard/scripts/fetch.py" = ["E402"]  # imports after dependency check
+"fetch_guard/scripts/server.py" = ["E402"]  # imports after dependency check

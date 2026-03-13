@@ -2,13 +2,13 @@
 
 from unittest.mock import MagicMock, patch
 
-import playwright_fetcher
+from fetch_guard.scripts import playwright_fetcher
 
 
 class TestPlaywrightFetch:
     """Tests for playwright_fetcher.fetch()."""
 
-    @patch("playwright_fetcher.sync_playwright", create=True)
+    @patch("fetch_guard.scripts.playwright_fetcher.sync_playwright", create=True)
     def test_successful_fetch(self, mock_sync_pw):
         # Build mock chain: sync_playwright() -> context manager -> chromium.launch() -> page
         mock_page = MagicMock()
@@ -34,7 +34,7 @@ class TestPlaywrightFetch:
         # Patch the import inside the function
         with (
             patch.dict("sys.modules", {"playwright.sync_api": MagicMock()}),
-            patch("playwright_fetcher.sync_playwright", mock_sync_pw, create=True),
+            patch("fetch_guard.scripts.playwright_fetcher.sync_playwright", mock_sync_pw, create=True),
         ):
             pass  # Validates mock chain setup
 

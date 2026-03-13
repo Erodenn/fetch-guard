@@ -2,7 +2,7 @@
 
 import json
 
-from injection_guard import RISK_OK
+from .injection_guard import RISK_OK
 
 
 def format_output(result, salted_body):

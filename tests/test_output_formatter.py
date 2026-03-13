@@ -2,7 +2,7 @@
 
 import json
 
-import output_formatter
+from fetch_guard.scripts import output_formatter
 
 
 def _make_result(**overrides):
