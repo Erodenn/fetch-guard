@@ -91,7 +91,7 @@ Add the following to your MCP client config. Works with Claude Code, Claude Desk
   "mcpServers": {
     "fetch-guard": {
       "command": "docker",
-      "args": ["run", "-i", "--rm", "erodenn/fetch-guard"]
+      "args": ["run", "-i", "--rm", "sterlsnyc/fetch-guard"]
     }
   }
 }
