@@ -1,6 +1,6 @@
 """Tests for link_extractor module."""
 
-from fetch_guard.scripts import link_extractor
+from fetch_guard.extraction import links as link_extractor
 
 SAMPLE_HTML = """
 <html><body>

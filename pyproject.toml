@@ -33,7 +33,7 @@ dependencies = [
 ]
 
 [project.scripts]
-fetch-guard = "fetch_guard.scripts.server:main"
+fetch-guard = "fetch_guard.server:main"
 
 [project.optional-dependencies]
 js = [
@@ -59,7 +59,7 @@ markers = [
 [tool.ruff]
 target-version = "py39"
 line-length = 120
-src = ["fetch_guard/scripts", "tests"]
+src = ["fetch_guard", "tests"]
 
 [tool.ruff.lint]
 select = [
@@ -79,5 +79,6 @@ select = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = ["S101"]  # allow assert in tests
-"fetch_guard/scripts/fetch.py" = ["E402"]  # imports after dependency check
-"fetch_guard/scripts/server.py" = ["E402"]  # imports after dependency check
+"fetch_guard/cli.py" = ["E402"]  # imports after dependency check
+"fetch_guard/server.py" = ["E402"]  # imports after dependency check
+"fetch_guard/http/__init__.py" = ["A005"]  # http subpackage shadows stdlib — scoped under fetch_guard

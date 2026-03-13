@@ -1,6 +1,6 @@
 """Tests for injection_guard module."""
 
-from fetch_guard.scripts import injection_guard
+from fetch_guard.security import guard as injection_guard
 
 
 class TestGenerateSalt:

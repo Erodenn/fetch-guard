@@ -1,6 +1,6 @@
 """Tests for content_type_handler module."""
 
-from fetch_guard.scripts import content_type_handler
+from fetch_guard.extraction import content_type as content_type_handler
 
 # ---------------------------------------------------------------------------
 # classify()

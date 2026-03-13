@@ -1,6 +1,6 @@
 """Tests for metadata_extractor module."""
 
-from fetch_guard.scripts import metadata_extractor
+from fetch_guard.extraction import metadata as metadata_extractor
 
 
 class TestNullMetadata:

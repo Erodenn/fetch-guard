@@ -11,18 +11,16 @@ from datetime import datetime, timezone
 if not os.environ.get("PYTHONIOENCODING"):
     os.environ["PYTHONIOENCODING"] = "utf-8"
 
-from . import (
-    content_extractor,
-    content_type_handler,
-    edge_detector,
-    fetch_client,
-    html_sanitizer,
-    injection_guard,
-    link_extractor,
-    llms_txt_checker,
-    metadata_extractor,
-    playwright_fetcher,
-)
+from .extraction import content as content_extractor
+from .extraction import content_type as content_type_handler
+from .extraction import edges as edge_detector
+from .extraction import links as link_extractor
+from .extraction import metadata as metadata_extractor
+from .http import client as fetch_client
+from .http import llms_txt as llms_txt_checker
+from .http import playwright as playwright_fetcher
+from .security import guard as injection_guard
+from .security import sanitizer as html_sanitizer
 
 _ZERO_TALLY = {"hidden_elements": 0, "offscreen_elements": 0, "nonprinting_chars": 0}
 

@@ -3,7 +3,7 @@
 from unittest.mock import patch
 
 import pytest
-from fetch_guard.scripts.pipeline import FetchError, run
+from fetch_guard.pipeline import FetchError, run
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -67,14 +67,14 @@ _OK_SCAN = {"risk": "OK", "matches": []}
 class TestRunSuccess:
     """Tests for successful pipeline runs."""
 
-    @patch("fetch_guard.scripts.pipeline.llms_txt_checker")
-    @patch("fetch_guard.scripts.pipeline.edge_detector")
-    @patch("fetch_guard.scripts.pipeline.fetch_client")
-    @patch("fetch_guard.scripts.pipeline.content_extractor")
-    @patch("fetch_guard.scripts.pipeline.html_sanitizer")
-    @patch("fetch_guard.scripts.pipeline.metadata_extractor")
-    @patch("fetch_guard.scripts.pipeline.link_extractor")
-    @patch("fetch_guard.scripts.pipeline.injection_guard")
+    @patch("fetch_guard.pipeline.llms_txt_checker")
+    @patch("fetch_guard.pipeline.edge_detector")
+    @patch("fetch_guard.pipeline.fetch_client")
+    @patch("fetch_guard.pipeline.content_extractor")
+    @patch("fetch_guard.pipeline.html_sanitizer")
+    @patch("fetch_guard.pipeline.metadata_extractor")
+    @patch("fetch_guard.pipeline.link_extractor")
+    @patch("fetch_guard.pipeline.injection_guard")
     def test_returns_all_expected_keys(
         self, mock_guard, mock_links, mock_meta, mock_sanitizer,
         mock_content, mock_client, mock_edge, mock_llms,
@@ -102,14 +102,14 @@ class TestRunSuccess:
         }
         assert set(result.keys()) == expected_keys
 
-    @patch("fetch_guard.scripts.pipeline.llms_txt_checker")
-    @patch("fetch_guard.scripts.pipeline.edge_detector")
-    @patch("fetch_guard.scripts.pipeline.fetch_client")
-    @patch("fetch_guard.scripts.pipeline.content_extractor")
-    @patch("fetch_guard.scripts.pipeline.html_sanitizer")
-    @patch("fetch_guard.scripts.pipeline.metadata_extractor")
-    @patch("fetch_guard.scripts.pipeline.link_extractor")
-    @patch("fetch_guard.scripts.pipeline.injection_guard")
+    @patch("fetch_guard.pipeline.llms_txt_checker")
+    @patch("fetch_guard.pipeline.edge_detector")
+    @patch("fetch_guard.pipeline.fetch_client")
+    @patch("fetch_guard.pipeline.content_extractor")
+    @patch("fetch_guard.pipeline.html_sanitizer")
+    @patch("fetch_guard.pipeline.metadata_extractor")
+    @patch("fetch_guard.pipeline.link_extractor")
+    @patch("fetch_guard.pipeline.injection_guard")
     def test_basic_field_values(
         self, mock_guard, mock_links, mock_meta, mock_sanitizer,
         mock_content, mock_client, mock_edge, mock_llms,
@@ -149,8 +149,8 @@ class TestRunSuccess:
 class TestRunErrors:
     """Tests for pipeline error handling."""
 
-    @patch("fetch_guard.scripts.pipeline.llms_txt_checker")
-    @patch("fetch_guard.scripts.pipeline.fetch_client")
+    @patch("fetch_guard.pipeline.llms_txt_checker")
+    @patch("fetch_guard.pipeline.fetch_client")
     def test_fetch_error_raises(self, mock_client, mock_llms):
         mock_llms.check.return_value = _mock_llms_result()
         mock_llms.is_root_url.return_value = False
@@ -161,9 +161,9 @@ class TestRunErrors:
         with pytest.raises(FetchError, match="Connection refused"):
             run("https://example.com")
 
-    @patch("fetch_guard.scripts.pipeline.llms_txt_checker")
-    @patch("fetch_guard.scripts.pipeline.edge_detector")
-    @patch("fetch_guard.scripts.pipeline.fetch_client")
+    @patch("fetch_guard.pipeline.llms_txt_checker")
+    @patch("fetch_guard.pipeline.edge_detector")
+    @patch("fetch_guard.pipeline.fetch_client")
     def test_empty_html_raises(self, mock_client, mock_edge, mock_llms):
         mock_llms.check.return_value = _mock_llms_result()
         mock_llms.is_root_url.return_value = False
@@ -173,11 +173,11 @@ class TestRunErrors:
         with pytest.raises(FetchError, match="No response body"):
             run("https://example.com")
 
-    @patch("fetch_guard.scripts.pipeline.llms_txt_checker")
-    @patch("fetch_guard.scripts.pipeline.edge_detector")
-    @patch("fetch_guard.scripts.pipeline.fetch_client")
-    @patch("fetch_guard.scripts.pipeline.content_extractor")
-    @patch("fetch_guard.scripts.pipeline.html_sanitizer")
+    @patch("fetch_guard.pipeline.llms_txt_checker")
+    @patch("fetch_guard.pipeline.edge_detector")
+    @patch("fetch_guard.pipeline.fetch_client")
+    @patch("fetch_guard.pipeline.content_extractor")
+    @patch("fetch_guard.pipeline.html_sanitizer")
     def test_no_content_with_js_raises(
         self, mock_sanitizer, mock_content, mock_client,
         mock_edge, mock_llms,
@@ -200,14 +200,14 @@ class TestRunErrors:
 class TestJsHint:
     """Tests for the js_hint flag when static extraction returns nothing."""
 
-    @patch("fetch_guard.scripts.pipeline.llms_txt_checker")
-    @patch("fetch_guard.scripts.pipeline.edge_detector")
-    @patch("fetch_guard.scripts.pipeline.fetch_client")
-    @patch("fetch_guard.scripts.pipeline.content_extractor")
-    @patch("fetch_guard.scripts.pipeline.html_sanitizer")
-    @patch("fetch_guard.scripts.pipeline.metadata_extractor")
-    @patch("fetch_guard.scripts.pipeline.link_extractor")
-    @patch("fetch_guard.scripts.pipeline.injection_guard")
+    @patch("fetch_guard.pipeline.llms_txt_checker")
+    @patch("fetch_guard.pipeline.edge_detector")
+    @patch("fetch_guard.pipeline.fetch_client")
+    @patch("fetch_guard.pipeline.content_extractor")
+    @patch("fetch_guard.pipeline.html_sanitizer")
+    @patch("fetch_guard.pipeline.metadata_extractor")
+    @patch("fetch_guard.pipeline.link_extractor")
+    @patch("fetch_guard.pipeline.injection_guard")
     def test_js_hint_set_on_empty_static(
         self, mock_guard, mock_links, mock_meta, mock_sanitizer,
         mock_content, mock_client, mock_edge, mock_llms,
@@ -235,14 +235,14 @@ class TestJsHint:
 class TestTruncation:
     """Tests for the max_words truncation."""
 
-    @patch("fetch_guard.scripts.pipeline.llms_txt_checker")
-    @patch("fetch_guard.scripts.pipeline.edge_detector")
-    @patch("fetch_guard.scripts.pipeline.fetch_client")
-    @patch("fetch_guard.scripts.pipeline.content_extractor")
-    @patch("fetch_guard.scripts.pipeline.html_sanitizer")
-    @patch("fetch_guard.scripts.pipeline.metadata_extractor")
-    @patch("fetch_guard.scripts.pipeline.link_extractor")
-    @patch("fetch_guard.scripts.pipeline.injection_guard")
+    @patch("fetch_guard.pipeline.llms_txt_checker")
+    @patch("fetch_guard.pipeline.edge_detector")
+    @patch("fetch_guard.pipeline.fetch_client")
+    @patch("fetch_guard.pipeline.content_extractor")
+    @patch("fetch_guard.pipeline.html_sanitizer")
+    @patch("fetch_guard.pipeline.metadata_extractor")
+    @patch("fetch_guard.pipeline.link_extractor")
+    @patch("fetch_guard.pipeline.injection_guard")
     def test_truncation_sets_field(
         self, mock_guard, mock_links, mock_meta, mock_sanitizer,
         mock_content, mock_client, mock_edge, mock_llms,
@@ -272,14 +272,14 @@ class TestTruncation:
 class TestInjectionFields:
     """Tests for injection scan result mapping."""
 
-    @patch("fetch_guard.scripts.pipeline.llms_txt_checker")
-    @patch("fetch_guard.scripts.pipeline.edge_detector")
-    @patch("fetch_guard.scripts.pipeline.fetch_client")
-    @patch("fetch_guard.scripts.pipeline.content_extractor")
-    @patch("fetch_guard.scripts.pipeline.html_sanitizer")
-    @patch("fetch_guard.scripts.pipeline.metadata_extractor")
-    @patch("fetch_guard.scripts.pipeline.link_extractor")
-    @patch("fetch_guard.scripts.pipeline.injection_guard")
+    @patch("fetch_guard.pipeline.llms_txt_checker")
+    @patch("fetch_guard.pipeline.edge_detector")
+    @patch("fetch_guard.pipeline.fetch_client")
+    @patch("fetch_guard.pipeline.content_extractor")
+    @patch("fetch_guard.pipeline.html_sanitizer")
+    @patch("fetch_guard.pipeline.metadata_extractor")
+    @patch("fetch_guard.pipeline.link_extractor")
+    @patch("fetch_guard.pipeline.injection_guard")
     def test_injection_matches_populated(
         self, mock_guard, mock_links, mock_meta, mock_sanitizer,
         mock_content, mock_client, mock_edge, mock_llms,
@@ -317,14 +317,14 @@ class TestInjectionFields:
 class TestEdgeCases:
     """Tests for edge case detection and retry logic."""
 
-    @patch("fetch_guard.scripts.pipeline.llms_txt_checker")
-    @patch("fetch_guard.scripts.pipeline.edge_detector")
-    @patch("fetch_guard.scripts.pipeline.fetch_client")
-    @patch("fetch_guard.scripts.pipeline.content_extractor")
-    @patch("fetch_guard.scripts.pipeline.html_sanitizer")
-    @patch("fetch_guard.scripts.pipeline.metadata_extractor")
-    @patch("fetch_guard.scripts.pipeline.link_extractor")
-    @patch("fetch_guard.scripts.pipeline.injection_guard")
+    @patch("fetch_guard.pipeline.llms_txt_checker")
+    @patch("fetch_guard.pipeline.edge_detector")
+    @patch("fetch_guard.pipeline.fetch_client")
+    @patch("fetch_guard.pipeline.content_extractor")
+    @patch("fetch_guard.pipeline.html_sanitizer")
+    @patch("fetch_guard.pipeline.metadata_extractor")
+    @patch("fetch_guard.pipeline.link_extractor")
+    @patch("fetch_guard.pipeline.injection_guard")
     def test_edge_case_populated(
         self, mock_guard, mock_links, mock_meta, mock_sanitizer,
         mock_content, mock_client, mock_edge, mock_llms,
@@ -349,14 +349,14 @@ class TestEdgeCases:
             "type": "paywall", "detail": "soft paywall detected",
         }
 
-    @patch("fetch_guard.scripts.pipeline.llms_txt_checker")
-    @patch("fetch_guard.scripts.pipeline.edge_detector")
-    @patch("fetch_guard.scripts.pipeline.fetch_client")
-    @patch("fetch_guard.scripts.pipeline.content_extractor")
-    @patch("fetch_guard.scripts.pipeline.html_sanitizer")
-    @patch("fetch_guard.scripts.pipeline.metadata_extractor")
-    @patch("fetch_guard.scripts.pipeline.link_extractor")
-    @patch("fetch_guard.scripts.pipeline.injection_guard")
+    @patch("fetch_guard.pipeline.llms_txt_checker")
+    @patch("fetch_guard.pipeline.edge_detector")
+    @patch("fetch_guard.pipeline.fetch_client")
+    @patch("fetch_guard.pipeline.content_extractor")
+    @patch("fetch_guard.pipeline.html_sanitizer")
+    @patch("fetch_guard.pipeline.metadata_extractor")
+    @patch("fetch_guard.pipeline.link_extractor")
+    @patch("fetch_guard.pipeline.injection_guard")
     def test_retry_on_bot_block(
         self, mock_guard, mock_links, mock_meta, mock_sanitizer,
         mock_content, mock_client, mock_edge, mock_llms,
@@ -393,12 +393,12 @@ class TestEdgeCases:
 class TestLlmsTxt:
     """Tests for /llms.txt content replacement."""
 
-    @patch("fetch_guard.scripts.pipeline.llms_txt_checker")
-    @patch("fetch_guard.scripts.pipeline.content_extractor")
-    @patch("fetch_guard.scripts.pipeline.html_sanitizer")
-    @patch("fetch_guard.scripts.pipeline.metadata_extractor")
-    @patch("fetch_guard.scripts.pipeline.link_extractor")
-    @patch("fetch_guard.scripts.pipeline.injection_guard")
+    @patch("fetch_guard.pipeline.llms_txt_checker")
+    @patch("fetch_guard.pipeline.content_extractor")
+    @patch("fetch_guard.pipeline.html_sanitizer")
+    @patch("fetch_guard.pipeline.metadata_extractor")
+    @patch("fetch_guard.pipeline.link_extractor")
+    @patch("fetch_guard.pipeline.injection_guard")
     def test_llms_txt_replacement(
         self, mock_guard, mock_links, mock_meta, mock_sanitizer,
         mock_content, mock_llms,
@@ -430,14 +430,14 @@ class TestLlmsTxt:
 class TestLinksMode:
     """Tests for link extraction modes."""
 
-    @patch("fetch_guard.scripts.pipeline.llms_txt_checker")
-    @patch("fetch_guard.scripts.pipeline.edge_detector")
-    @patch("fetch_guard.scripts.pipeline.fetch_client")
-    @patch("fetch_guard.scripts.pipeline.content_extractor")
-    @patch("fetch_guard.scripts.pipeline.html_sanitizer")
-    @patch("fetch_guard.scripts.pipeline.metadata_extractor")
-    @patch("fetch_guard.scripts.pipeline.link_extractor")
-    @patch("fetch_guard.scripts.pipeline.injection_guard")
+    @patch("fetch_guard.pipeline.llms_txt_checker")
+    @patch("fetch_guard.pipeline.edge_detector")
+    @patch("fetch_guard.pipeline.fetch_client")
+    @patch("fetch_guard.pipeline.content_extractor")
+    @patch("fetch_guard.pipeline.html_sanitizer")
+    @patch("fetch_guard.pipeline.metadata_extractor")
+    @patch("fetch_guard.pipeline.link_extractor")
+    @patch("fetch_guard.pipeline.injection_guard")
     def test_full_links_mode(
         self, mock_guard, mock_links, mock_meta, mock_sanitizer,
         mock_content, mock_client, mock_edge, mock_llms,
@@ -471,10 +471,10 @@ class TestLinksMode:
 class TestContentTypeRouting:
     """Tests for non-HTML content type detection and routing."""
 
-    @patch("fetch_guard.scripts.pipeline.llms_txt_checker")
-    @patch("fetch_guard.scripts.pipeline.edge_detector")
-    @patch("fetch_guard.scripts.pipeline.fetch_client")
-    @patch("fetch_guard.scripts.pipeline.injection_guard")
+    @patch("fetch_guard.pipeline.llms_txt_checker")
+    @patch("fetch_guard.pipeline.edge_detector")
+    @patch("fetch_guard.pipeline.fetch_client")
+    @patch("fetch_guard.pipeline.injection_guard")
     def test_json_content_type_returns_formatted_json(
         self, mock_guard, mock_client, mock_edge, mock_llms,
     ):
@@ -495,10 +495,10 @@ class TestContentTypeRouting:
         assert result["js_hint"] is False
         assert result["sanitization"]["hidden_elements"] == 0
 
-    @patch("fetch_guard.scripts.pipeline.llms_txt_checker")
-    @patch("fetch_guard.scripts.pipeline.edge_detector")
-    @patch("fetch_guard.scripts.pipeline.fetch_client")
-    @patch("fetch_guard.scripts.pipeline.injection_guard")
+    @patch("fetch_guard.pipeline.llms_txt_checker")
+    @patch("fetch_guard.pipeline.edge_detector")
+    @patch("fetch_guard.pipeline.fetch_client")
+    @patch("fetch_guard.pipeline.injection_guard")
     def test_plain_text_content_type_passthrough(
         self, mock_guard, mock_client, mock_edge, mock_llms,
     ):
@@ -516,14 +516,14 @@ class TestContentTypeRouting:
         assert result["content_type"] == "plain_text"
         assert result["body"] == "Just some plain text."
 
-    @patch("fetch_guard.scripts.pipeline.llms_txt_checker")
-    @patch("fetch_guard.scripts.pipeline.edge_detector")
-    @patch("fetch_guard.scripts.pipeline.fetch_client")
-    @patch("fetch_guard.scripts.pipeline.content_extractor")
-    @patch("fetch_guard.scripts.pipeline.html_sanitizer")
-    @patch("fetch_guard.scripts.pipeline.metadata_extractor")
-    @patch("fetch_guard.scripts.pipeline.link_extractor")
-    @patch("fetch_guard.scripts.pipeline.injection_guard")
+    @patch("fetch_guard.pipeline.llms_txt_checker")
+    @patch("fetch_guard.pipeline.edge_detector")
+    @patch("fetch_guard.pipeline.fetch_client")
+    @patch("fetch_guard.pipeline.content_extractor")
+    @patch("fetch_guard.pipeline.html_sanitizer")
+    @patch("fetch_guard.pipeline.metadata_extractor")
+    @patch("fetch_guard.pipeline.link_extractor")
+    @patch("fetch_guard.pipeline.injection_guard")
     def test_plain_text_with_html_body_routes_to_html_pipeline(
         self, mock_guard, mock_links, mock_meta, mock_sanitizer,
         mock_content, mock_client, mock_edge, mock_llms,
@@ -549,9 +549,9 @@ class TestContentTypeRouting:
         assert result["content_type"] == "html"
         mock_sanitizer.sanitize.assert_called_once()
 
-    @patch("fetch_guard.scripts.pipeline.llms_txt_checker")
-    @patch("fetch_guard.scripts.pipeline.edge_detector")
-    @patch("fetch_guard.scripts.pipeline.fetch_client")
+    @patch("fetch_guard.pipeline.llms_txt_checker")
+    @patch("fetch_guard.pipeline.edge_detector")
+    @patch("fetch_guard.pipeline.fetch_client")
     def test_binary_content_type_raises(
         self, mock_client, mock_edge, mock_llms,
     ):
@@ -566,10 +566,10 @@ class TestContentTypeRouting:
         with pytest.raises(FetchError, match="Binary content type"):
             run("https://example.com/file.pdf")
 
-    @patch("fetch_guard.scripts.pipeline.llms_txt_checker")
-    @patch("fetch_guard.scripts.pipeline.edge_detector")
-    @patch("fetch_guard.scripts.pipeline.fetch_client")
-    @patch("fetch_guard.scripts.pipeline.injection_guard")
+    @patch("fetch_guard.pipeline.llms_txt_checker")
+    @patch("fetch_guard.pipeline.edge_detector")
+    @patch("fetch_guard.pipeline.fetch_client")
+    @patch("fetch_guard.pipeline.injection_guard")
     def test_csv_content_type_returns_markdown_table(
         self, mock_guard, mock_client, mock_edge, mock_llms,
     ):
@@ -588,10 +588,10 @@ class TestContentTypeRouting:
         assert "| name | age |" in result["body"]
         assert "| Alice | 30 |" in result["body"]
 
-    @patch("fetch_guard.scripts.pipeline.llms_txt_checker")
-    @patch("fetch_guard.scripts.pipeline.edge_detector")
-    @patch("fetch_guard.scripts.pipeline.fetch_client")
-    @patch("fetch_guard.scripts.pipeline.injection_guard")
+    @patch("fetch_guard.pipeline.llms_txt_checker")
+    @patch("fetch_guard.pipeline.edge_detector")
+    @patch("fetch_guard.pipeline.fetch_client")
+    @patch("fetch_guard.pipeline.injection_guard")
     def test_non_html_truncation_works(
         self, mock_guard, mock_client, mock_edge, mock_llms,
     ):
@@ -609,10 +609,10 @@ class TestContentTypeRouting:
         assert result["truncated_at"] == 3
         assert result["body"] == "word1 word2 word3"
 
-    @patch("fetch_guard.scripts.pipeline.llms_txt_checker")
-    @patch("fetch_guard.scripts.pipeline.edge_detector")
-    @patch("fetch_guard.scripts.pipeline.fetch_client")
-    @patch("fetch_guard.scripts.pipeline.injection_guard")
+    @patch("fetch_guard.pipeline.llms_txt_checker")
+    @patch("fetch_guard.pipeline.edge_detector")
+    @patch("fetch_guard.pipeline.fetch_client")
+    @patch("fetch_guard.pipeline.injection_guard")
     def test_xml_rss_content_type_renders_feed(
         self, mock_guard, mock_client, mock_edge, mock_llms,
     ):

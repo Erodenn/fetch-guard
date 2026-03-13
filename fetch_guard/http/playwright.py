@@ -1,6 +1,6 @@
 """Playwright-based JS rendering — headless Chromium fetch for JavaScript-heavy pages."""
 
-from .fetch_client import _error_result
+from .client import _error_result
 
 
 def fetch(url, timeout=180):

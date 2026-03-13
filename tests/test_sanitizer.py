@@ -1,6 +1,6 @@
 """Tests for html_sanitizer module."""
 
-from fetch_guard.scripts import html_sanitizer
+from fetch_guard.security import sanitizer as html_sanitizer
 
 
 class TestSanitize:

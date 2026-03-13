@@ -2,7 +2,7 @@
 
 import secrets
 
-from .injection_patterns import PATTERNS
+from .patterns import PATTERNS
 
 CONTEXT_CHARS = 60
 

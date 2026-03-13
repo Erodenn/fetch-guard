@@ -3,13 +3,13 @@
 from unittest.mock import MagicMock, patch
 
 import requests
-from fetch_guard.scripts import fetch_client
+from fetch_guard.http import client as fetch_client
 
 
 class TestFetch:
     """Tests for fetch_client.fetch()."""
 
-    @patch("fetch_guard.scripts.fetch_client.requests.get")
+    @patch("fetch_guard.http.client.requests.get")
     def test_successful_fetch(self, mock_get):
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -25,7 +25,7 @@ class TestFetch:
         assert result["final_url"] == "https://example.com"
         assert result["error"] is None
 
-    @patch("fetch_guard.scripts.fetch_client.requests.get")
+    @patch("fetch_guard.http.client.requests.get")
     def test_redirect_captures_final_url(self, mock_get):
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -38,7 +38,7 @@ class TestFetch:
 
         assert result["final_url"] == "https://example.com/final"
 
-    @patch("fetch_guard.scripts.fetch_client.requests.get")
+    @patch("fetch_guard.http.client.requests.get")
     def test_timeout_error(self, mock_get):
         mock_get.side_effect = requests.exceptions.Timeout()
 
@@ -49,7 +49,7 @@ class TestFetch:
         assert "timed out" in result["error"]
         assert result["final_url"] == "https://example.com"
 
-    @patch("fetch_guard.scripts.fetch_client.requests.get")
+    @patch("fetch_guard.http.client.requests.get")
     def test_connection_error(self, mock_get):
         mock_get.side_effect = requests.exceptions.ConnectionError("DNS failure")
 
@@ -58,7 +58,7 @@ class TestFetch:
         assert result["status_code"] is None
         assert "Connection error" in result["error"]
 
-    @patch("fetch_guard.scripts.fetch_client.requests.get")
+    @patch("fetch_guard.http.client.requests.get")
     def test_non_2xx_returns_body(self, mock_get):
         """Non-2xx responses return the body for edge case detection."""
         mock_response = MagicMock()
@@ -74,7 +74,7 @@ class TestFetch:
         assert result["html"] == "<html>Access Denied</html>"
         assert result["error"] is None
 
-    @patch("fetch_guard.scripts.fetch_client.requests.get")
+    @patch("fetch_guard.http.client.requests.get")
     def test_404_returns_body(self, mock_get):
         mock_response = MagicMock()
         mock_response.status_code = 404
@@ -89,7 +89,7 @@ class TestFetch:
         assert result["html"] == "<html>Not Found</html>"
         assert result["error"] is None
 
-    @patch("fetch_guard.scripts.fetch_client.requests.get")
+    @patch("fetch_guard.http.client.requests.get")
     def test_custom_user_agent(self, mock_get):
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -103,7 +103,7 @@ class TestFetch:
         _, kwargs = mock_get.call_args
         assert kwargs["headers"]["User-Agent"] == "CustomBot/1.0"
 
-    @patch("fetch_guard.scripts.fetch_client.requests.get")
+    @patch("fetch_guard.http.client.requests.get")
     def test_browser_user_agent_constant(self, mock_get):
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -117,7 +117,7 @@ class TestFetch:
         _, kwargs = mock_get.call_args
         assert "Chrome" in kwargs["headers"]["User-Agent"]
 
-    @patch("fetch_guard.scripts.fetch_client.requests.get")
+    @patch("fetch_guard.http.client.requests.get")
     def test_custom_timeout_passed(self, mock_get):
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -132,7 +132,7 @@ class TestFetch:
         _, kwargs = mock_get.call_args
         assert kwargs["timeout"] == 30
 
-    @patch("fetch_guard.scripts.fetch_client.requests.get")
+    @patch("fetch_guard.http.client.requests.get")
     def test_user_agent_header(self, mock_get):
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -144,9 +144,9 @@ class TestFetch:
         fetch_client.fetch("https://example.com")
 
         _, kwargs = mock_get.call_args
-        assert "ClaudeFetch" in kwargs["headers"]["User-Agent"]
+        assert "FetchGuard" in kwargs["headers"]["User-Agent"]
 
-    @patch("fetch_guard.scripts.fetch_client.requests.get")
+    @patch("fetch_guard.http.client.requests.get")
     def test_content_type_in_result(self, mock_get):
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -160,7 +160,7 @@ class TestFetch:
 
         assert result["content_type"] == "application/json; charset=utf-8"
 
-    @patch("fetch_guard.scripts.fetch_client.requests.get")
+    @patch("fetch_guard.http.client.requests.get")
     def test_content_type_missing_header(self, mock_get):
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -174,7 +174,7 @@ class TestFetch:
 
         assert result["content_type"] == ""
 
-    @patch("fetch_guard.scripts.fetch_client.requests.get")
+    @patch("fetch_guard.http.client.requests.get")
     def test_content_type_none_on_error(self, mock_get):
         mock_get.side_effect = requests.exceptions.Timeout()
 

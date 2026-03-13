@@ -47,9 +47,10 @@ if missing:
 # Local imports (after dependency check so errors are clear)
 # ---------------------------------------------------------------------------
 
-from . import injection_guard, output_formatter
+from .output import formatter as output_formatter
 from .pipeline import FetchError
 from .pipeline import run as pipeline_run
+from .security import guard as injection_guard
 
 # ---------------------------------------------------------------------------
 # CLI

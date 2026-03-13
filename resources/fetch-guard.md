@@ -6,16 +6,22 @@ location: user
 license: MIT
 ---
 
+!pip show fetch-guard
+
 # Fetch Guard
 
 Fetch a URL and return clean, LLM-ready markdown with structured metadata and injection safety scanning.
 
-Also available as a PyPI package: `pip install fetch-guard`
-
 ## How to Run
 
+### MCP Tool
+
+If the `fetch-guard` MCP server is configured, use the `fetch` tool directly.
+
+### CLI
+
 ```bash
-python .claude/skills/fetch-guard/scripts/fetch.py <url> [options]
+fetch-guard-cli <url> [options]
 ```
 
 ### Options

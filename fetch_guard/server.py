@@ -47,9 +47,9 @@ if _missing:
 
 from mcp.server.fastmcp import FastMCP
 
-from . import injection_guard
 from .pipeline import FetchError
 from .pipeline import run as pipeline_run
+from .security import guard as injection_guard
 
 # ---------------------------------------------------------------------------
 # Server

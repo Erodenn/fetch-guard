@@ -41,7 +41,7 @@ Add the following to your MCP client config. Works with Claude Code, Claude Desk
 ```json
 {
   "mcpServers": {
-    "fetch": {
+    "fetch-guard": {
       "command": "uvx",
       "args": ["fetch-guard"]
     }
@@ -54,7 +54,7 @@ Add the following to your MCP client config. Works with Claude Code, Claude Desk
 ```json
 {
   "mcpServers": {
-    "fetch": {
+    "fetch-guard": {
       "command": "fetch-guard"
     }
   }
@@ -66,9 +66,9 @@ Add the following to your MCP client config. Works with Claude Code, Claude Desk
 ```json
 {
   "mcpServers": {
-    "fetch": {
+    "fetch-guard": {
       "command": "python",
-      "args": ["path/to/fetch_guard/scripts/server.py"]
+      "args": ["-m", "fetch_guard.server"]
     }
   }
 }
@@ -81,7 +81,8 @@ Ask your AI assistant to fetch any URL. If it returns structured content with a 
 ### CLI
 
 ```bash
-python fetch_guard/scripts/fetch.py <url> [options]
+fetch-guard-cli <url> [options]
+# or: python -m fetch_guard.cli <url> [options]
 ```
 
 | Flag | Default | Description |
@@ -94,7 +95,7 @@ python fetch_guard/scripts/fetch.py <url> [options]
 
 ### Claude Code Skill
 
-Copy the `fetch_guard/` directory to `.claude/skills/fetch-guard/` in your project. The skill definition lives in `fetch_guard/SKILL.md`.
+Copy `resources/fetch-guard/` to `.claude/skills/fetch-guard/` in your project, or use the standalone command file `resources/fetch-guard.md` as a Claude Code command.
 
 ## What It Does
 
@@ -162,25 +163,33 @@ When `--strict` is set and the risk level is `HIGH`, the CLI exits with code 2 a
 ## Architecture
 
 ```
-fetch_guard/scripts/
-├── fetch.py                # CLI entry point — arg parsing, pipeline call, output
-├── server.py               # MCP server — FastMCP wrapper over the same pipeline
+fetch_guard/
 ├── pipeline.py             # Core orchestration — 13-step sequence, shared by CLI and server
-├── fetch_client.py         # Static HTTP fetch via requests
-├── playwright_fetcher.py   # JS rendering via Playwright (optional)
-├── llms_txt_checker.py     # /llms.txt preflight check
-├── edge_detector.py        # Bot block, paywall, login wall classification
-├── html_sanitizer.py       # Hidden element and non-printing character removal
-├── content_extractor.py    # trafilatura wrapper — HTML to markdown
-├── content_type_handler.py # Non-HTML routing — JSON, XML/RSS, CSV, plain text
-├── metadata_extractor.py   # JSON-LD, Open Graph, meta tag extraction
-├── link_extractor.py       # External link extraction (domain list or full URLs)
-├── injection_guard.py      # Salt generation, content wrapping, pattern scanning
-├── injection_patterns.py   # 15 compiled regex patterns — single source of truth
-└── output_formatter.py     # CLI output assembly
+├── cli.py                  # CLI entry point — arg parsing, pipeline call, output
+├── server.py               # MCP server — FastMCP wrapper over the same pipeline
+│
+├── http/                   # HTTP fetching layer
+│   ├── client.py           # Static HTTP fetch via requests
+│   ├── playwright.py       # JS rendering via Playwright (optional)
+│   └── llms_txt.py         # /llms.txt preflight check
+│
+├── extraction/             # Content extraction and edge detection
+│   ├── content.py          # trafilatura wrapper — HTML to markdown
+│   ├── content_type.py     # Non-HTML routing — JSON, XML/RSS, CSV, plain text
+│   ├── edges.py            # Bot block, paywall, login wall classification
+│   ├── links.py            # External link extraction (domain list or full URLs)
+│   └── metadata.py         # JSON-LD, Open Graph, meta tag extraction
+│
+├── security/               # Injection defense
+│   ├── guard.py            # Salt generation, content wrapping, pattern scanning
+│   ├── patterns.py         # 15 compiled regex patterns — single source of truth
+│   └── sanitizer.py        # Hidden element and non-printing character removal
+│
+└── output/                 # Formatting
+    └── formatter.py        # CLI output assembly
 ```
 
-Each module is a single-responsibility unit with a public function as its interface. `pipeline.py` is the shared core: both `fetch.py` (CLI) and `server.py` (MCP) call `pipeline.run()` and handle the result in their own way.
+Each module is a single-responsibility unit with a public function as its interface. `pipeline.py` is the shared core: both `cli.py` and `server.py` call `pipeline.run()` and handle the result in their own way.
 
 ## Development
 
@@ -192,7 +201,7 @@ pytest
 pytest -m live
 
 # Lint
-ruff check fetch_guard/scripts/ tests/
+ruff check fetch_guard/ tests/
 ```
 
 CI runs on push and PR to `main` via GitHub Actions, testing against Python 3.9, 3.12, and 3.13.

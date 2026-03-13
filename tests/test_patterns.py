@@ -1,6 +1,6 @@
 """Tests for injection_patterns — validates pattern structure and basic matching."""
 
-from fetch_guard.scripts import injection_patterns
+from fetch_guard.security import patterns as injection_patterns
 
 
 class TestPatternRegistry:

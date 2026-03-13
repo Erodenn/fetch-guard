@@ -2,7 +2,7 @@
 
 from unittest.mock import MagicMock, patch
 
-from fetch_guard.scripts import llms_txt_checker
+from fetch_guard.http import llms_txt as llms_txt_checker
 
 
 class TestDomainRoot:
@@ -40,7 +40,7 @@ class TestIsRootUrl:
 class TestCheck:
     """Tests for llms_txt_checker.check()."""
 
-    @patch("fetch_guard.scripts.llms_txt_checker.requests")
+    @patch("fetch_guard.http.llms_txt.requests")
     def test_available(self, mock_requests):
         get_resp = MagicMock()
         get_resp.status_code = 200
@@ -55,7 +55,7 @@ class TestCheck:
         assert result["content"] == "# llms.txt\nThis site is about testing."
         assert result["url"] == "https://example.com/llms.txt"
 
-    @patch("fetch_guard.scripts.llms_txt_checker.requests")
+    @patch("fetch_guard.http.llms_txt.requests")
     def test_not_found(self, mock_requests):
         get_resp = MagicMock()
         get_resp.status_code = 404
@@ -67,7 +67,7 @@ class TestCheck:
         assert result["available"] is False
         assert result["content"] is None
 
-    @patch("fetch_guard.scripts.llms_txt_checker.requests")
+    @patch("fetch_guard.http.llms_txt.requests")
     def test_request_error(self, mock_requests):
         mock_requests.get.side_effect = Exception("timeout")
         mock_requests.RequestException = Exception
@@ -75,7 +75,7 @@ class TestCheck:
         result = llms_txt_checker.check("https://example.com")
         assert result["available"] is False
 
-    @patch("fetch_guard.scripts.llms_txt_checker.requests")
+    @patch("fetch_guard.http.llms_txt.requests")
     def test_empty_content(self, mock_requests):
         get_resp = MagicMock()
         get_resp.status_code = 200
@@ -88,7 +88,7 @@ class TestCheck:
         result = llms_txt_checker.check("https://example.com")
         assert result["available"] is False
 
-    @patch("fetch_guard.scripts.llms_txt_checker.requests")
+    @patch("fetch_guard.http.llms_txt.requests")
     def test_timeout_capped(self, mock_requests):
         get_resp = MagicMock()
         get_resp.status_code = 404

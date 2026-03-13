@@ -2,7 +2,7 @@
 
 import json
 
-from .injection_guard import RISK_OK
+from ..security.guard import RISK_OK
 
 
 def format_output(result, salted_body):
@@ -29,7 +29,7 @@ def format_output(result, salted_body):
     sanitized_line = f"{h} hidden elements, {o} offscreen elements, {n} non-printing chars removed"
 
     header_lines = [
-        "--- FETCH RESULT ---",
+        "--- FETCH GUARD RESULT ---",
         f"URL: {result['url']}",
         f"Fetched: {result['fetched_at']}",
         f"Status: {status}",
