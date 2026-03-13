@@ -175,16 +175,16 @@ class TestRunErrors:
 
     @patch("fetch_guard.pipeline.llms_txt_checker")
     @patch("fetch_guard.pipeline.edge_detector")
-    @patch("fetch_guard.pipeline.fetch_client")
+    @patch("fetch_guard.pipeline.playwright_fetcher")
     @patch("fetch_guard.pipeline.content_extractor")
     @patch("fetch_guard.pipeline.html_sanitizer")
     def test_no_content_with_js_raises(
-        self, mock_sanitizer, mock_content, mock_client,
+        self, mock_sanitizer, mock_content, mock_playwright,
         mock_edge, mock_llms,
     ):
         mock_llms.check.return_value = _mock_llms_result()
         mock_llms.is_root_url.return_value = False
-        mock_client.fetch.return_value = _mock_fetch_result()
+        mock_playwright.fetch.return_value = _mock_fetch_result()
         mock_edge.detect.return_value = _mock_edge_result()
         mock_sanitizer.sanitize.return_value = ("", _zero_tally())
         mock_content.extract.return_value = None
