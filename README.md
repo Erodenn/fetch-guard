@@ -15,6 +15,10 @@ Three layers handle the injection defense specifically:
 2. **Pattern scanning** runs 15 compiled regex patterns against the extracted text, covering system prompt overrides, ignore-previous instructions, role injection, fake conversation tags, hidden instruction markers (`[INST]`, `<<SYS>>`), and suspicious base64 blocks.
 3. **Session-salted output wrapping** generates a random 8-character hex salt per invocation and wraps the body in `<fetch-content-{salt}>` tags. Since the salt is unpredictable, injected content cannot spoof the wrapper boundaries.
 
+## One Tool
+
+This is a single-tool MCP server. It exposes one tool — `fetch` — that runs a full extraction pipeline behind a consistent interface. No tool selection, no routing, no multi-step workflows. One URL in, one structured result out, configurable via parameters.
+
 ## Quick Start
 
 ### Prerequisites
@@ -94,6 +98,19 @@ fetch-guard-cli <url> [options]
 | `--js` | off | Use Playwright for JS-rendered pages |
 | `--strict` | off | Exit code 2 on high-risk injection |
 | `--links MODE` | `domains` | `domains` for unique external domains, `full` for all URLs with anchor text |
+
+## Tool Parameters
+
+The MCP `fetch` tool accepts these parameters:
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `url` | string | required | The URL to fetch |
+| `timeout` | integer | 180 | Request timeout in seconds. Ensures the tool always returns — no hanging fetches |
+| `max_words` | integer | none | Word cap on extracted body content |
+| `strict` | boolean | false | When true and high-risk injection is detected, the response is marked as an error |
+| `js` | boolean | false | Use Playwright for JavaScript-rendered pages (requires `fetch-guard[js]`) |
+| `links` | string | `"domains"` | `"domains"` for unique external domains, `"full"` for all URLs with anchor text |
 
 ### Claude Code Skill
 

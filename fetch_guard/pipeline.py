@@ -4,18 +4,30 @@ Extracts the pipeline logic from the CLI entry point so it can be reused
 by both the CLI (fetch.py) and the MCP server (server.py).
 """
 
+import concurrent.futures
 from datetime import datetime, timezone
 
-from .extraction import content as content_extractor
-from .extraction import content_type as content_type_handler
-from .extraction import edges as edge_detector
-from .extraction import links as link_extractor
-from .extraction import metadata as metadata_extractor
-from .http import client as fetch_client
-from .http import llms_txt as llms_txt_checker
-from .http import playwright as playwright_fetcher
-from .security import guard as injection_guard
-from .security import sanitizer as html_sanitizer
+from .extraction import (
+    CLASS_BINARY,
+    CLASS_HTML,
+    CLASS_UNKNOWN,
+    classify_content_type,
+    detect_edges,
+    extract_content,
+    extract_domains,
+    extract_full,
+    extract_metadata,
+    handle_content_type,
+    null_metadata,
+)
+from .http import (
+    BROWSER_USER_AGENT,
+    check_llms_txt,
+    is_root_url,
+    playwright_fetch,
+    static_fetch,
+)
+from .security import sanitize, scan
 
 _ZERO_TALLY = {"hidden_elements": 0, "offscreen_elements": 0, "nonprinting_chars": 0}
 
@@ -102,72 +114,96 @@ def run(url, timeout=180, max_words=None, strict=False, js=False, links="domains
     Raises:
         FetchError: On network/fetch failures or empty responses.
     """
+    # `strict` is accepted for API symmetry but not used here — callers
+    # (server.py, cli.py) inspect `risk_level` in the result dict to decide
+    # whether to raise/exit on high-risk injection.
     js_rendered = js
     edge_result = None
     retried = False
     js_hint = False
 
-    # 1. Check for /llms.txt
-    llms_result = llms_txt_checker.check(url)
-    llms_txt_available = llms_result["available"]
+    # 1. Check for /llms.txt + fetch
+    fetcher = playwright_fetch if js else static_fetch
+    is_root = is_root_url(url)
     llms_txt_replaced = False
 
-    if llms_txt_available and llms_txt_checker.is_root_url(url):
-        llms_txt_replaced = True
-        raw_html = llms_result["content"]
-        final_url = llms_result["url"]
-        content_type = ""
+    if is_root:
+        # Sequential: check llms.txt first — may replace the entire fetch
+        llms_result = check_llms_txt(url)
+        llms_txt_available = llms_result["available"]
+
+        if llms_txt_available:
+            llms_txt_replaced = True
+            raw_html = llms_result["content"]
+            final_url = llms_result["url"]
+            content_type = ""
+        else:
+            result = fetcher(url, timeout=timeout)
+            if result["error"]:
+                raise FetchError(result["error"])
+            edge_result = detect_edges(result)
+            raw_html = result["html"]
+            final_url = result["final_url"]
+            content_type = result.get("content_type", "")
     else:
-        # 2. Fetch — Playwright or static
-        fetcher = playwright_fetcher if js else fetch_client
-        result = fetcher.fetch(url, timeout=timeout)
+        # Concurrent: fetch + llms.txt check in parallel
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+            llms_future = executor.submit(check_llms_txt, url)
+            fetch_future = executor.submit(fetcher, url, timeout=timeout)
+            result = fetch_future.result()
+            llms_result = llms_future.result()
+
+        llms_txt_available = llms_result["available"]
 
         if result["error"]:
             raise FetchError(result["error"])
 
         # 3. Edge detection
-        edge_result = edge_detector.detect(result)
+        edge_result = detect_edges(result)
 
-        # 4. Retry with browser UA if bot block detected (static only)
-        if edge_result["should_retry"] and not js:
-            retried = True
-            result = fetch_client.fetch(
-                url,
-                timeout=timeout,
-                user_agent=fetch_client.BROWSER_USER_AGENT,
-            )
-            if result["error"]:
-                raise FetchError(f"Error on retry: {result['error']}")
-            edge_result = edge_detector.detect(result)
+        raw_html = result["html"]
+        final_url = result["final_url"]
+        content_type = result.get("content_type", "")
 
+    # 4. Retry with browser UA if bot block detected (static only, non-root)
+    if not llms_txt_replaced and edge_result and edge_result["should_retry"] and not js:
+        retried = True
+        result = static_fetch(
+            url,
+            timeout=timeout,
+            user_agent=BROWSER_USER_AGENT,
+        )
+        if result["error"]:
+            raise FetchError(f"Error on retry: {result['error']}")
+        edge_result = detect_edges(result)
         raw_html = result["html"]
         final_url = result["final_url"]
         content_type = result.get("content_type", "")
 
     # 5. Content-type routing — non-HTML gets its own fast path
     if not llms_txt_replaced:
-        content_class = content_type_handler.classify(
+        content_class = classify_content_type(
             content_type, (raw_html[:500] if raw_html else ""),
         )
     else:
-        content_class = "html"  # llms.txt always uses the HTML path
+        content_class = CLASS_HTML  # llms.txt always uses the HTML path
 
-    if content_class == "binary":
+    if content_class == CLASS_BINARY:
         raise FetchError(
             f"Binary content type not supported: {content_type}"
         )
 
-    if content_class not in ("html", "unknown"):
+    if content_class not in (CLASS_HTML, CLASS_UNKNOWN):
 
-        markdown = content_type_handler.handle(content_class, raw_html)
-        risk_result = injection_guard.scan(markdown)
+        markdown = handle_content_type(content_class, raw_html)
+        risk_result = scan(markdown)
         markdown, truncated_at = _truncate(markdown, max_words)
 
         return _build_result(
             url=final_url,
             body=markdown,
             content_type=content_class,
-            metadata=metadata_extractor.null_metadata(),
+            metadata=null_metadata(),
             links=[] if links == "domains" else {},
             links_mode=links,
             risk_result=risk_result,
@@ -188,10 +224,10 @@ def run(url, timeout=180, max_words=None, strict=False, js=False, links="domains
         raise FetchError("No response body received.")
 
     # 7. Sanitize
-    cleaned_html, tally = html_sanitizer.sanitize(raw_html)
+    cleaned_html, soup, tally = sanitize(raw_html)
 
     # 8. Extract content
-    markdown = content_extractor.extract(cleaned_html)
+    markdown = extract_content(cleaned_html)
     if markdown is None:
         if not js:
             js_hint = True
@@ -202,19 +238,19 @@ def run(url, timeout=180, max_words=None, strict=False, js=False, links="domains
                 msg += f" Detected edge case: {edge_result['edge_type']} ({edge_result['detail']})"
             raise FetchError(msg)
 
-    # 9. Extract metadata
-    metadata = metadata_extractor.null_metadata() if llms_txt_replaced else metadata_extractor.extract(cleaned_html)
+    # 9. Extract metadata (reuse sanitized soup to avoid re-parsing)
+    metadata = null_metadata() if llms_txt_replaced else extract_metadata(cleaned_html, soup=soup)
 
-    # 10. Extract links
+    # 10. Extract links (reuse sanitized soup to avoid re-parsing)
     if llms_txt_replaced:
         extracted_links = [] if links == "domains" else {}
     elif links == "full":
-        extracted_links = link_extractor.extract_full(cleaned_html, url)
+        extracted_links = extract_full(cleaned_html, url, soup=soup)
     else:
-        extracted_links = link_extractor.extract_domains(cleaned_html, url)
+        extracted_links = extract_domains(cleaned_html, url, soup=soup)
 
     # 11. Scan for injection
-    risk_result = injection_guard.scan(markdown)
+    risk_result = scan(markdown)
 
     # 12. Truncate
     markdown, truncated_at = _truncate(markdown, max_words)
@@ -223,7 +259,7 @@ def run(url, timeout=180, max_words=None, strict=False, js=False, links="domains
     return _build_result(
         url=final_url,
         body=markdown,
-        content_type="html",
+        content_type=CLASS_HTML,
         metadata=metadata,
         links=extracted_links,
         links_mode=links,

@@ -10,22 +10,33 @@ import json
 import re
 import xml.etree.ElementTree as ET
 
+# Content class constants — used in classify() returns, handle() dispatch,
+# and pipeline.py comparisons.
+CLASS_HTML = "html"
+CLASS_JSON = "json"
+CLASS_XML = "xml"
+CLASS_CSV = "csv"
+CLASS_BINARY = "binary"
+CLASS_UNKNOWN = "unknown"
+CLASS_PLAIN_TEXT = "plain_text"
+CLASS_MARKDOWN = "markdown"
+
 # MIME type prefix → content class
 _MIME_MAP = {
-    "text/html": "html",
-    "application/xhtml+xml": "html",
-    "text/plain": "plain_text",
-    "text/markdown": "markdown",
-    "text/x-markdown": "markdown",
-    "application/json": "json",
-    "text/json": "json",
-    "application/xml": "xml",
-    "text/xml": "xml",
-    "application/rss+xml": "xml",
-    "application/atom+xml": "xml",
-    "application/rdf+xml": "xml",
-    "text/csv": "csv",
-    "application/csv": "csv",
+    "text/html": CLASS_HTML,
+    "application/xhtml+xml": CLASS_HTML,
+    "text/plain": CLASS_PLAIN_TEXT,
+    "text/markdown": CLASS_MARKDOWN,
+    "text/x-markdown": CLASS_MARKDOWN,
+    "application/json": CLASS_JSON,
+    "text/json": CLASS_JSON,
+    "application/xml": CLASS_XML,
+    "text/xml": CLASS_XML,
+    "application/rss+xml": CLASS_XML,
+    "application/atom+xml": CLASS_XML,
+    "application/rdf+xml": CLASS_XML,
+    "text/csv": CLASS_CSV,
+    "application/csv": CLASS_CSV,
 }
 
 _BINARY_PREFIXES = (
@@ -65,7 +76,7 @@ def classify(content_type_header, body_preview=""):
     mime = _parse_mime(content_type_header)
 
     if not mime:
-        return "unknown"
+        return CLASS_UNKNOWN
 
     # Direct lookup
     content_class = _MIME_MAP.get(mime)
@@ -74,12 +85,12 @@ def classify(content_type_header, body_preview=""):
         # Check binary prefixes
         for prefix in _BINARY_PREFIXES:
             if mime.startswith(prefix):
-                return "binary"
-        return "unknown"
+                return CLASS_BINARY
+        return CLASS_UNKNOWN
 
     # Sniff text/plain for HTML
-    if content_class == "plain_text" and body_preview and _HTML_SNIFF_RE.search(body_preview[:200]):
-        return "html"
+    if content_class == CLASS_PLAIN_TEXT and body_preview and _HTML_SNIFF_RE.search(body_preview[:200]):
+        return CLASS_HTML
 
     return content_class
 
@@ -117,9 +128,9 @@ def _handle_xml(raw_body):
     tag = _strip_ns(root.tag).lower()
 
     if tag == "rss":
-        return _render_rss(root)
+        return _render_feed(root, _RSS_CONFIG)
     if tag == "feed":
-        return _render_atom(root)
+        return _render_feed(root, _ATOM_CONFIG)
 
     # Matched sniff but root tag isn't rss/feed (e.g. nested element)
     return f"```xml\n{raw_body}\n```"
@@ -141,73 +152,69 @@ def _find_child_attr(element, local_name, attr):
     return ""
 
 
-def _render_rss(root):
-    """Render RSS feed items as markdown."""
+_RSS_CONFIG = {
+    "container_tag": "channel",
+    "item_tag": "item",
+    "subtitle_tag": "description",
+    "description_tags": ["description"],
+    "link_mode": "text",
+}
+
+_ATOM_CONFIG = {
+    "container_tag": None,
+    "item_tag": "entry",
+    "subtitle_tag": "subtitle",
+    "description_tags": ["summary", "content"],
+    "link_mode": "attr",
+}
+
+
+def _render_feed(root, config):
+    """Render RSS or Atom feed as markdown using a format config."""
+    # RSS wraps items in <channel>; Atom uses root directly
+    if config["container_tag"]:
+        container = None
+        for child in root:
+            if _strip_ns(child.tag).lower() == config["container_tag"]:
+                container = child
+                break
+        if container is None:
+            return f"```xml\n{ET.tostring(root, encoding='unicode')}\n```"
+    else:
+        container = root
+
     lines = []
-    channel = None
-    for child in root:
-        if _strip_ns(child.tag).lower() == "channel":
-            channel = child
-            break
 
-    if channel is None:
-        return f"```xml\n{ET.tostring(root, encoding='unicode')}\n```"
-
-    title = _find_child_text(channel, "title")
+    title = _find_child_text(container, "title")
     if title:
         lines.append(f"# {title}\n")
 
-    description = _find_child_text(channel, "description")
-    if description:
-        lines.append(f"{description}\n")
+    subtitle = _find_child_text(container, config["subtitle_tag"])
+    if subtitle:
+        lines.append(f"{subtitle}\n")
 
-    for item in channel:
-        if _strip_ns(item.tag).lower() != "item":
+    for item in container:
+        if _strip_ns(item.tag).lower() != config["item_tag"]:
             continue
         item_title = _find_child_text(item, "title")
-        item_link = _find_child_text(item, "link")
-        item_desc = _find_child_text(item, "description")
+
+        # RSS: link text is the URL; Atom: link href attribute is the URL
+        if config["link_mode"] == "text":
+            item_link = _find_child_text(item, "link")
+        else:
+            item_link = _find_child_attr(item, "link", "href")
 
         if item_title and item_link:
             lines.append(f"## [{item_title}]({item_link})\n")
         elif item_title:
             lines.append(f"## {item_title}\n")
 
-        if item_desc:
-            lines.append(f"{item_desc}\n")
-
-    return "\n".join(lines).strip()
-
-
-def _render_atom(root):
-    """Render Atom feed entries as markdown."""
-    lines = []
-
-    title = _find_child_text(root, "title")
-    if title:
-        lines.append(f"# {title}\n")
-
-    subtitle = _find_child_text(root, "subtitle")
-    if subtitle:
-        lines.append(f"{subtitle}\n")
-
-    for entry in root:
-        if _strip_ns(entry.tag).lower() != "entry":
-            continue
-        entry_title = _find_child_text(entry, "title")
-        entry_link = _find_child_attr(entry, "link", "href")
-        entry_summary = _find_child_text(entry, "summary")
-        entry_content = _find_child_text(entry, "content")
-
-        if entry_title and entry_link:
-            lines.append(f"## [{entry_title}]({entry_link})\n")
-        elif entry_title:
-            lines.append(f"## {entry_title}\n")
-
-        if entry_summary:
-            lines.append(f"{entry_summary}\n")
-        elif entry_content:
-            lines.append(f"{entry_content}\n")
+        # Use first available description tag
+        for desc_tag in config["description_tags"]:
+            desc = _find_child_text(item, desc_tag)
+            if desc:
+                lines.append(f"{desc}\n")
+                break
 
     return "\n".join(lines).strip()
 
@@ -251,13 +258,13 @@ def handle(content_class, raw_body):
     Returns:
         Formatted markdown string, or None for binary content.
     """
-    if content_class == "binary":
+    if content_class == CLASS_BINARY:
         return None
-    if content_class == "json":
+    if content_class == CLASS_JSON:
         return _handle_json(raw_body)
-    if content_class == "xml":
+    if content_class == CLASS_XML:
         return _handle_xml(raw_body)
-    if content_class == "csv":
+    if content_class == CLASS_CSV:
         return _handle_csv(raw_body)
     # plain_text, markdown, unknown — return as-is
     return raw_body

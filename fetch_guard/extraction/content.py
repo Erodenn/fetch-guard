@@ -1,13 +1,13 @@
 """trafilatura wrapper — extracts article body from HTML as clean markdown."""
 
-import trafilatura
-
 
 def extract(html):
     """Extract article content from HTML as markdown.
 
     Returns markdown string or None if extraction fails.
     """
+    import trafilatura
+
     result = trafilatura.extract(
         html,
         output_format="markdown",

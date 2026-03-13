@@ -67,29 +67,31 @@ _OK_SCAN = {"risk": "OK", "matches": []}
 class TestRunSuccess:
     """Tests for successful pipeline runs."""
 
-    @patch("fetch_guard.pipeline.llms_txt_checker")
-    @patch("fetch_guard.pipeline.edge_detector")
-    @patch("fetch_guard.pipeline.fetch_client")
-    @patch("fetch_guard.pipeline.content_extractor")
-    @patch("fetch_guard.pipeline.html_sanitizer")
-    @patch("fetch_guard.pipeline.metadata_extractor")
-    @patch("fetch_guard.pipeline.link_extractor")
-    @patch("fetch_guard.pipeline.injection_guard")
+    @patch("fetch_guard.pipeline.check_llms_txt")
+    @patch("fetch_guard.pipeline.is_root_url")
+    @patch("fetch_guard.pipeline.detect_edges")
+    @patch("fetch_guard.pipeline.static_fetch")
+    @patch("fetch_guard.pipeline.extract_content")
+    @patch("fetch_guard.pipeline.sanitize")
+    @patch("fetch_guard.pipeline.extract_metadata")
+    @patch("fetch_guard.pipeline.extract_domains")
+    @patch("fetch_guard.pipeline.scan")
     def test_returns_all_expected_keys(
-        self, mock_guard, mock_links, mock_meta, mock_sanitizer,
-        mock_content, mock_client, mock_edge, mock_llms,
+        self, mock_scan, mock_extract_domains, mock_extract_meta,
+        mock_sanitize, mock_extract_content, mock_static_fetch,
+        mock_detect_edges, mock_is_root, mock_check_llms,
     ):
-        mock_llms.check.return_value = _mock_llms_result()
-        mock_llms.is_root_url.return_value = False
-        mock_client.fetch.return_value = _mock_fetch_result()
-        mock_edge.detect.return_value = _mock_edge_result()
-        mock_sanitizer.sanitize.return_value = (
-            "<p>Hello world</p>", _zero_tally(),
+        mock_check_llms.return_value = _mock_llms_result()
+        mock_is_root.return_value = False
+        mock_static_fetch.return_value = _mock_fetch_result()
+        mock_detect_edges.return_value = _mock_edge_result()
+        mock_sanitize.return_value = (
+            "<p>Hello world</p>", None, _zero_tally(),
         )
-        mock_content.extract.return_value = "Hello world"
-        mock_meta.extract.return_value = _null_meta(title="Test")
-        mock_links.extract_domains.return_value = ["other.com"]
-        mock_guard.scan.return_value = _OK_SCAN
+        mock_extract_content.return_value = "Hello world"
+        mock_extract_meta.return_value = _null_meta(title="Test")
+        mock_extract_domains.return_value = ["other.com"]
+        mock_scan.return_value = _OK_SCAN
 
         result = run("https://example.com")
 
@@ -102,30 +104,32 @@ class TestRunSuccess:
         }
         assert set(result.keys()) == expected_keys
 
-    @patch("fetch_guard.pipeline.llms_txt_checker")
-    @patch("fetch_guard.pipeline.edge_detector")
-    @patch("fetch_guard.pipeline.fetch_client")
-    @patch("fetch_guard.pipeline.content_extractor")
-    @patch("fetch_guard.pipeline.html_sanitizer")
-    @patch("fetch_guard.pipeline.metadata_extractor")
-    @patch("fetch_guard.pipeline.link_extractor")
-    @patch("fetch_guard.pipeline.injection_guard")
+    @patch("fetch_guard.pipeline.check_llms_txt")
+    @patch("fetch_guard.pipeline.is_root_url")
+    @patch("fetch_guard.pipeline.detect_edges")
+    @patch("fetch_guard.pipeline.static_fetch")
+    @patch("fetch_guard.pipeline.extract_content")
+    @patch("fetch_guard.pipeline.sanitize")
+    @patch("fetch_guard.pipeline.extract_metadata")
+    @patch("fetch_guard.pipeline.extract_domains")
+    @patch("fetch_guard.pipeline.scan")
     def test_basic_field_values(
-        self, mock_guard, mock_links, mock_meta, mock_sanitizer,
-        mock_content, mock_client, mock_edge, mock_llms,
+        self, mock_scan, mock_extract_domains, mock_extract_meta,
+        mock_sanitize, mock_extract_content, mock_static_fetch,
+        mock_detect_edges, mock_is_root, mock_check_llms,
     ):
-        mock_llms.check.return_value = _mock_llms_result()
-        mock_llms.is_root_url.return_value = False
-        mock_client.fetch.return_value = _mock_fetch_result()
-        mock_edge.detect.return_value = _mock_edge_result()
+        mock_check_llms.return_value = _mock_llms_result()
+        mock_is_root.return_value = False
+        mock_static_fetch.return_value = _mock_fetch_result()
+        mock_detect_edges.return_value = _mock_edge_result()
         tally = _zero_tally(
             hidden_elements=1, offscreen_elements=2, nonprinting_chars=3,
         )
-        mock_sanitizer.sanitize.return_value = ("<p>Hello</p>", tally)
-        mock_content.extract.return_value = "Hello"
-        mock_meta.extract.return_value = _null_meta(title="T")
-        mock_links.extract_domains.return_value = []
-        mock_guard.scan.return_value = _OK_SCAN
+        mock_sanitize.return_value = ("<p>Hello</p>", None, tally)
+        mock_extract_content.return_value = "Hello"
+        mock_extract_meta.return_value = _null_meta(title="T")
+        mock_extract_domains.return_value = []
+        mock_scan.return_value = _OK_SCAN
 
         result = run("https://example.com")
 
@@ -149,45 +153,48 @@ class TestRunSuccess:
 class TestRunErrors:
     """Tests for pipeline error handling."""
 
-    @patch("fetch_guard.pipeline.llms_txt_checker")
-    @patch("fetch_guard.pipeline.fetch_client")
-    def test_fetch_error_raises(self, mock_client, mock_llms):
-        mock_llms.check.return_value = _mock_llms_result()
-        mock_llms.is_root_url.return_value = False
-        mock_client.fetch.return_value = _mock_fetch_result(
+    @patch("fetch_guard.pipeline.check_llms_txt")
+    @patch("fetch_guard.pipeline.is_root_url")
+    @patch("fetch_guard.pipeline.static_fetch")
+    def test_fetch_error_raises(self, mock_static_fetch, mock_is_root, mock_check_llms):
+        mock_check_llms.return_value = _mock_llms_result()
+        mock_is_root.return_value = False
+        mock_static_fetch.return_value = _mock_fetch_result(
             error="Connection refused",
         )
 
         with pytest.raises(FetchError, match="Connection refused"):
             run("https://example.com")
 
-    @patch("fetch_guard.pipeline.llms_txt_checker")
-    @patch("fetch_guard.pipeline.edge_detector")
-    @patch("fetch_guard.pipeline.fetch_client")
-    def test_empty_html_raises(self, mock_client, mock_edge, mock_llms):
-        mock_llms.check.return_value = _mock_llms_result()
-        mock_llms.is_root_url.return_value = False
-        mock_client.fetch.return_value = _mock_fetch_result(html="")
-        mock_edge.detect.return_value = _mock_edge_result()
+    @patch("fetch_guard.pipeline.check_llms_txt")
+    @patch("fetch_guard.pipeline.is_root_url")
+    @patch("fetch_guard.pipeline.detect_edges")
+    @patch("fetch_guard.pipeline.static_fetch")
+    def test_empty_html_raises(self, mock_static_fetch, mock_detect_edges, mock_is_root, mock_check_llms):
+        mock_check_llms.return_value = _mock_llms_result()
+        mock_is_root.return_value = False
+        mock_static_fetch.return_value = _mock_fetch_result(html="")
+        mock_detect_edges.return_value = _mock_edge_result()
 
         with pytest.raises(FetchError, match="No response body"):
             run("https://example.com")
 
-    @patch("fetch_guard.pipeline.llms_txt_checker")
-    @patch("fetch_guard.pipeline.edge_detector")
-    @patch("fetch_guard.pipeline.playwright_fetcher")
-    @patch("fetch_guard.pipeline.content_extractor")
-    @patch("fetch_guard.pipeline.html_sanitizer")
+    @patch("fetch_guard.pipeline.check_llms_txt")
+    @patch("fetch_guard.pipeline.is_root_url")
+    @patch("fetch_guard.pipeline.detect_edges")
+    @patch("fetch_guard.pipeline.playwright_fetch")
+    @patch("fetch_guard.pipeline.extract_content")
+    @patch("fetch_guard.pipeline.sanitize")
     def test_no_content_with_js_raises(
-        self, mock_sanitizer, mock_content, mock_playwright,
-        mock_edge, mock_llms,
+        self, mock_sanitize, mock_extract_content, mock_playwright,
+        mock_detect_edges, mock_is_root, mock_check_llms,
     ):
-        mock_llms.check.return_value = _mock_llms_result()
-        mock_llms.is_root_url.return_value = False
-        mock_playwright.fetch.return_value = _mock_fetch_result()
-        mock_edge.detect.return_value = _mock_edge_result()
-        mock_sanitizer.sanitize.return_value = ("", _zero_tally())
-        mock_content.extract.return_value = None
+        mock_check_llms.return_value = _mock_llms_result()
+        mock_is_root.return_value = False
+        mock_playwright.return_value = _mock_fetch_result()
+        mock_detect_edges.return_value = _mock_edge_result()
+        mock_sanitize.return_value = ("", None, _zero_tally())
+        mock_extract_content.return_value = None
 
         with pytest.raises(FetchError, match="No content could be extracted"):
             run("https://example.com", js=True)
@@ -200,27 +207,29 @@ class TestRunErrors:
 class TestJsHint:
     """Tests for the js_hint flag when static extraction returns nothing."""
 
-    @patch("fetch_guard.pipeline.llms_txt_checker")
-    @patch("fetch_guard.pipeline.edge_detector")
-    @patch("fetch_guard.pipeline.fetch_client")
-    @patch("fetch_guard.pipeline.content_extractor")
-    @patch("fetch_guard.pipeline.html_sanitizer")
-    @patch("fetch_guard.pipeline.metadata_extractor")
-    @patch("fetch_guard.pipeline.link_extractor")
-    @patch("fetch_guard.pipeline.injection_guard")
+    @patch("fetch_guard.pipeline.check_llms_txt")
+    @patch("fetch_guard.pipeline.is_root_url")
+    @patch("fetch_guard.pipeline.detect_edges")
+    @patch("fetch_guard.pipeline.static_fetch")
+    @patch("fetch_guard.pipeline.extract_content")
+    @patch("fetch_guard.pipeline.sanitize")
+    @patch("fetch_guard.pipeline.extract_metadata")
+    @patch("fetch_guard.pipeline.extract_domains")
+    @patch("fetch_guard.pipeline.scan")
     def test_js_hint_set_on_empty_static(
-        self, mock_guard, mock_links, mock_meta, mock_sanitizer,
-        mock_content, mock_client, mock_edge, mock_llms,
+        self, mock_scan, mock_extract_domains, mock_extract_meta,
+        mock_sanitize, mock_extract_content, mock_static_fetch,
+        mock_detect_edges, mock_is_root, mock_check_llms,
     ):
-        mock_llms.check.return_value = _mock_llms_result()
-        mock_llms.is_root_url.return_value = False
-        mock_client.fetch.return_value = _mock_fetch_result()
-        mock_edge.detect.return_value = _mock_edge_result()
-        mock_sanitizer.sanitize.return_value = ("", _zero_tally())
-        mock_content.extract.return_value = None
-        mock_meta.extract.return_value = _null_meta()
-        mock_links.extract_domains.return_value = []
-        mock_guard.scan.return_value = _OK_SCAN
+        mock_check_llms.return_value = _mock_llms_result()
+        mock_is_root.return_value = False
+        mock_static_fetch.return_value = _mock_fetch_result()
+        mock_detect_edges.return_value = _mock_edge_result()
+        mock_sanitize.return_value = ("", None, _zero_tally())
+        mock_extract_content.return_value = None
+        mock_extract_meta.return_value = _null_meta()
+        mock_extract_domains.return_value = []
+        mock_scan.return_value = _OK_SCAN
 
         result = run("https://example.com")
 
@@ -235,29 +244,31 @@ class TestJsHint:
 class TestTruncation:
     """Tests for the max_words truncation."""
 
-    @patch("fetch_guard.pipeline.llms_txt_checker")
-    @patch("fetch_guard.pipeline.edge_detector")
-    @patch("fetch_guard.pipeline.fetch_client")
-    @patch("fetch_guard.pipeline.content_extractor")
-    @patch("fetch_guard.pipeline.html_sanitizer")
-    @patch("fetch_guard.pipeline.metadata_extractor")
-    @patch("fetch_guard.pipeline.link_extractor")
-    @patch("fetch_guard.pipeline.injection_guard")
+    @patch("fetch_guard.pipeline.check_llms_txt")
+    @patch("fetch_guard.pipeline.is_root_url")
+    @patch("fetch_guard.pipeline.detect_edges")
+    @patch("fetch_guard.pipeline.static_fetch")
+    @patch("fetch_guard.pipeline.extract_content")
+    @patch("fetch_guard.pipeline.sanitize")
+    @patch("fetch_guard.pipeline.extract_metadata")
+    @patch("fetch_guard.pipeline.extract_domains")
+    @patch("fetch_guard.pipeline.scan")
     def test_truncation_sets_field(
-        self, mock_guard, mock_links, mock_meta, mock_sanitizer,
-        mock_content, mock_client, mock_edge, mock_llms,
+        self, mock_scan, mock_extract_domains, mock_extract_meta,
+        mock_sanitize, mock_extract_content, mock_static_fetch,
+        mock_detect_edges, mock_is_root, mock_check_llms,
     ):
-        mock_llms.check.return_value = _mock_llms_result()
-        mock_llms.is_root_url.return_value = False
-        mock_client.fetch.return_value = _mock_fetch_result()
-        mock_edge.detect.return_value = _mock_edge_result()
-        mock_sanitizer.sanitize.return_value = (
-            "<p>a b c d e</p>", _zero_tally(),
+        mock_check_llms.return_value = _mock_llms_result()
+        mock_is_root.return_value = False
+        mock_static_fetch.return_value = _mock_fetch_result()
+        mock_detect_edges.return_value = _mock_edge_result()
+        mock_sanitize.return_value = (
+            "<p>a b c d e</p>", None, _zero_tally(),
         )
-        mock_content.extract.return_value = "one two three four five"
-        mock_meta.extract.return_value = _null_meta()
-        mock_links.extract_domains.return_value = []
-        mock_guard.scan.return_value = _OK_SCAN
+        mock_extract_content.return_value = "one two three four five"
+        mock_extract_meta.return_value = _null_meta()
+        mock_extract_domains.return_value = []
+        mock_scan.return_value = _OK_SCAN
 
         result = run("https://example.com", max_words=3)
 
@@ -272,29 +283,31 @@ class TestTruncation:
 class TestInjectionFields:
     """Tests for injection scan result mapping."""
 
-    @patch("fetch_guard.pipeline.llms_txt_checker")
-    @patch("fetch_guard.pipeline.edge_detector")
-    @patch("fetch_guard.pipeline.fetch_client")
-    @patch("fetch_guard.pipeline.content_extractor")
-    @patch("fetch_guard.pipeline.html_sanitizer")
-    @patch("fetch_guard.pipeline.metadata_extractor")
-    @patch("fetch_guard.pipeline.link_extractor")
-    @patch("fetch_guard.pipeline.injection_guard")
+    @patch("fetch_guard.pipeline.check_llms_txt")
+    @patch("fetch_guard.pipeline.is_root_url")
+    @patch("fetch_guard.pipeline.detect_edges")
+    @patch("fetch_guard.pipeline.static_fetch")
+    @patch("fetch_guard.pipeline.extract_content")
+    @patch("fetch_guard.pipeline.sanitize")
+    @patch("fetch_guard.pipeline.extract_metadata")
+    @patch("fetch_guard.pipeline.extract_domains")
+    @patch("fetch_guard.pipeline.scan")
     def test_injection_matches_populated(
-        self, mock_guard, mock_links, mock_meta, mock_sanitizer,
-        mock_content, mock_client, mock_edge, mock_llms,
+        self, mock_scan, mock_extract_domains, mock_extract_meta,
+        mock_sanitize, mock_extract_content, mock_static_fetch,
+        mock_detect_edges, mock_is_root, mock_check_llms,
     ):
-        mock_llms.check.return_value = _mock_llms_result()
-        mock_llms.is_root_url.return_value = False
-        mock_client.fetch.return_value = _mock_fetch_result()
-        mock_edge.detect.return_value = _mock_edge_result()
-        mock_sanitizer.sanitize.return_value = (
-            "<p>test</p>", _zero_tally(),
+        mock_check_llms.return_value = _mock_llms_result()
+        mock_is_root.return_value = False
+        mock_static_fetch.return_value = _mock_fetch_result()
+        mock_detect_edges.return_value = _mock_edge_result()
+        mock_sanitize.return_value = (
+            "<p>test</p>", None, _zero_tally(),
         )
-        mock_content.extract.return_value = "test content"
-        mock_meta.extract.return_value = _null_meta()
-        mock_links.extract_domains.return_value = []
-        mock_guard.scan.return_value = {
+        mock_extract_content.return_value = "test content"
+        mock_extract_meta.return_value = _null_meta()
+        mock_extract_domains.return_value = []
+        mock_scan.return_value = {
             "risk": "HIGH",
             "matches": [{
                 "pattern": "system_prompt_ref",
@@ -317,31 +330,33 @@ class TestInjectionFields:
 class TestEdgeCases:
     """Tests for edge case detection and retry logic."""
 
-    @patch("fetch_guard.pipeline.llms_txt_checker")
-    @patch("fetch_guard.pipeline.edge_detector")
-    @patch("fetch_guard.pipeline.fetch_client")
-    @patch("fetch_guard.pipeline.content_extractor")
-    @patch("fetch_guard.pipeline.html_sanitizer")
-    @patch("fetch_guard.pipeline.metadata_extractor")
-    @patch("fetch_guard.pipeline.link_extractor")
-    @patch("fetch_guard.pipeline.injection_guard")
+    @patch("fetch_guard.pipeline.check_llms_txt")
+    @patch("fetch_guard.pipeline.is_root_url")
+    @patch("fetch_guard.pipeline.detect_edges")
+    @patch("fetch_guard.pipeline.static_fetch")
+    @patch("fetch_guard.pipeline.extract_content")
+    @patch("fetch_guard.pipeline.sanitize")
+    @patch("fetch_guard.pipeline.extract_metadata")
+    @patch("fetch_guard.pipeline.extract_domains")
+    @patch("fetch_guard.pipeline.scan")
     def test_edge_case_populated(
-        self, mock_guard, mock_links, mock_meta, mock_sanitizer,
-        mock_content, mock_client, mock_edge, mock_llms,
+        self, mock_scan, mock_extract_domains, mock_extract_meta,
+        mock_sanitize, mock_extract_content, mock_static_fetch,
+        mock_detect_edges, mock_is_root, mock_check_llms,
     ):
-        mock_llms.check.return_value = _mock_llms_result()
-        mock_llms.is_root_url.return_value = False
-        mock_client.fetch.return_value = _mock_fetch_result()
-        mock_edge.detect.return_value = _mock_edge_result(
+        mock_check_llms.return_value = _mock_llms_result()
+        mock_is_root.return_value = False
+        mock_static_fetch.return_value = _mock_fetch_result()
+        mock_detect_edges.return_value = _mock_edge_result(
             edge_type="paywall", detail="soft paywall detected",
         )
-        mock_sanitizer.sanitize.return_value = (
-            "<p>content</p>", _zero_tally(),
+        mock_sanitize.return_value = (
+            "<p>content</p>", None, _zero_tally(),
         )
-        mock_content.extract.return_value = "content"
-        mock_meta.extract.return_value = _null_meta()
-        mock_links.extract_domains.return_value = []
-        mock_guard.scan.return_value = _OK_SCAN
+        mock_extract_content.return_value = "content"
+        mock_extract_meta.return_value = _null_meta()
+        mock_extract_domains.return_value = []
+        mock_scan.return_value = _OK_SCAN
 
         result = run("https://example.com")
 
@@ -349,41 +364,43 @@ class TestEdgeCases:
             "type": "paywall", "detail": "soft paywall detected",
         }
 
-    @patch("fetch_guard.pipeline.llms_txt_checker")
-    @patch("fetch_guard.pipeline.edge_detector")
-    @patch("fetch_guard.pipeline.fetch_client")
-    @patch("fetch_guard.pipeline.content_extractor")
-    @patch("fetch_guard.pipeline.html_sanitizer")
-    @patch("fetch_guard.pipeline.metadata_extractor")
-    @patch("fetch_guard.pipeline.link_extractor")
-    @patch("fetch_guard.pipeline.injection_guard")
+    @patch("fetch_guard.pipeline.check_llms_txt")
+    @patch("fetch_guard.pipeline.is_root_url")
+    @patch("fetch_guard.pipeline.detect_edges")
+    @patch("fetch_guard.pipeline.static_fetch")
+    @patch("fetch_guard.pipeline.BROWSER_USER_AGENT", "Mozilla/5.0")
+    @patch("fetch_guard.pipeline.extract_content")
+    @patch("fetch_guard.pipeline.sanitize")
+    @patch("fetch_guard.pipeline.extract_metadata")
+    @patch("fetch_guard.pipeline.extract_domains")
+    @patch("fetch_guard.pipeline.scan")
     def test_retry_on_bot_block(
-        self, mock_guard, mock_links, mock_meta, mock_sanitizer,
-        mock_content, mock_client, mock_edge, mock_llms,
+        self, mock_scan, mock_extract_domains, mock_extract_meta,
+        mock_sanitize, mock_extract_content, mock_static_fetch,
+        mock_detect_edges, mock_is_root, mock_check_llms,
     ):
-        mock_llms.check.return_value = _mock_llms_result()
-        mock_llms.is_root_url.return_value = False
-        mock_client.fetch.side_effect = [
+        mock_check_llms.return_value = _mock_llms_result()
+        mock_is_root.return_value = False
+        mock_static_fetch.side_effect = [
             _mock_fetch_result(),
             _mock_fetch_result(),
         ]
-        mock_client.BROWSER_USER_AGENT = "Mozilla/5.0"
-        mock_edge.detect.side_effect = [
+        mock_detect_edges.side_effect = [
             _mock_edge_result(should_retry=True),
             _mock_edge_result(),
         ]
-        mock_sanitizer.sanitize.return_value = (
-            "<p>content</p>", _zero_tally(),
+        mock_sanitize.return_value = (
+            "<p>content</p>", None, _zero_tally(),
         )
-        mock_content.extract.return_value = "content"
-        mock_meta.extract.return_value = _null_meta()
-        mock_links.extract_domains.return_value = []
-        mock_guard.scan.return_value = _OK_SCAN
+        mock_extract_content.return_value = "content"
+        mock_extract_meta.return_value = _null_meta()
+        mock_extract_domains.return_value = []
+        mock_scan.return_value = _OK_SCAN
 
         result = run("https://example.com")
 
         assert result["retried"] is True
-        assert mock_client.fetch.call_count == 2
+        assert mock_static_fetch.call_count == 2
 
 
 # ---------------------------------------------------------------------------
@@ -393,28 +410,28 @@ class TestEdgeCases:
 class TestLlmsTxt:
     """Tests for /llms.txt content replacement."""
 
-    @patch("fetch_guard.pipeline.llms_txt_checker")
-    @patch("fetch_guard.pipeline.content_extractor")
-    @patch("fetch_guard.pipeline.html_sanitizer")
-    @patch("fetch_guard.pipeline.metadata_extractor")
-    @patch("fetch_guard.pipeline.link_extractor")
-    @patch("fetch_guard.pipeline.injection_guard")
+    @patch("fetch_guard.pipeline.check_llms_txt")
+    @patch("fetch_guard.pipeline.is_root_url")
+    @patch("fetch_guard.pipeline.extract_content")
+    @patch("fetch_guard.pipeline.sanitize")
+    @patch("fetch_guard.pipeline.null_metadata")
+    @patch("fetch_guard.pipeline.scan")
     def test_llms_txt_replacement(
-        self, mock_guard, mock_links, mock_meta, mock_sanitizer,
-        mock_content, mock_llms,
+        self, mock_scan, mock_null_meta, mock_sanitize,
+        mock_extract_content, mock_is_root, mock_check_llms,
     ):
-        mock_llms.check.return_value = _mock_llms_result(
+        mock_check_llms.return_value = _mock_llms_result(
             available=True,
             content="# LLMs.txt content",
             url="https://example.com/llms.txt",
         )
-        mock_llms.is_root_url.return_value = True
-        mock_sanitizer.sanitize.return_value = (
-            "# LLMs.txt content", _zero_tally(),
+        mock_is_root.return_value = True
+        mock_sanitize.return_value = (
+            "# LLMs.txt content", None, _zero_tally(),
         )
-        mock_content.extract.return_value = "LLMs.txt content"
-        mock_meta.null_metadata.return_value = _null_meta()
-        mock_guard.scan.return_value = _OK_SCAN
+        mock_extract_content.return_value = "LLMs.txt content"
+        mock_null_meta.return_value = _null_meta()
+        mock_scan.return_value = _OK_SCAN
 
         result = run("https://example.com")
 
@@ -430,38 +447,40 @@ class TestLlmsTxt:
 class TestLinksMode:
     """Tests for link extraction modes."""
 
-    @patch("fetch_guard.pipeline.llms_txt_checker")
-    @patch("fetch_guard.pipeline.edge_detector")
-    @patch("fetch_guard.pipeline.fetch_client")
-    @patch("fetch_guard.pipeline.content_extractor")
-    @patch("fetch_guard.pipeline.html_sanitizer")
-    @patch("fetch_guard.pipeline.metadata_extractor")
-    @patch("fetch_guard.pipeline.link_extractor")
-    @patch("fetch_guard.pipeline.injection_guard")
+    @patch("fetch_guard.pipeline.check_llms_txt")
+    @patch("fetch_guard.pipeline.is_root_url")
+    @patch("fetch_guard.pipeline.detect_edges")
+    @patch("fetch_guard.pipeline.static_fetch")
+    @patch("fetch_guard.pipeline.extract_content")
+    @patch("fetch_guard.pipeline.sanitize")
+    @patch("fetch_guard.pipeline.extract_metadata")
+    @patch("fetch_guard.pipeline.extract_full")
+    @patch("fetch_guard.pipeline.scan")
     def test_full_links_mode(
-        self, mock_guard, mock_links, mock_meta, mock_sanitizer,
-        mock_content, mock_client, mock_edge, mock_llms,
+        self, mock_scan, mock_extract_full, mock_extract_meta,
+        mock_sanitize, mock_extract_content, mock_static_fetch,
+        mock_detect_edges, mock_is_root, mock_check_llms,
     ):
-        mock_llms.check.return_value = _mock_llms_result()
-        mock_llms.is_root_url.return_value = False
-        mock_client.fetch.return_value = _mock_fetch_result()
-        mock_edge.detect.return_value = _mock_edge_result()
-        mock_sanitizer.sanitize.return_value = (
-            "<p>test</p>", _zero_tally(),
+        mock_check_llms.return_value = _mock_llms_result()
+        mock_is_root.return_value = False
+        mock_static_fetch.return_value = _mock_fetch_result()
+        mock_detect_edges.return_value = _mock_edge_result()
+        mock_sanitize.return_value = (
+            "<p>test</p>", None, _zero_tally(),
         )
-        mock_content.extract.return_value = "test"
-        mock_meta.extract.return_value = _null_meta()
-        mock_links.extract_full.return_value = {
+        mock_extract_content.return_value = "test"
+        mock_extract_meta.return_value = _null_meta()
+        mock_extract_full.return_value = {
             "other.com": [{
                 "url": "https://other.com/page", "anchor": "Link",
             }],
         }
-        mock_guard.scan.return_value = _OK_SCAN
+        mock_scan.return_value = _OK_SCAN
 
         result = run("https://example.com", links="full")
 
         assert result["links_mode"] == "full"
-        mock_links.extract_full.assert_called_once()
+        mock_extract_full.assert_called_once()
 
 
 # ---------------------------------------------------------------------------
@@ -471,21 +490,23 @@ class TestLinksMode:
 class TestContentTypeRouting:
     """Tests for non-HTML content type detection and routing."""
 
-    @patch("fetch_guard.pipeline.llms_txt_checker")
-    @patch("fetch_guard.pipeline.edge_detector")
-    @patch("fetch_guard.pipeline.fetch_client")
-    @patch("fetch_guard.pipeline.injection_guard")
+    @patch("fetch_guard.pipeline.check_llms_txt")
+    @patch("fetch_guard.pipeline.is_root_url")
+    @patch("fetch_guard.pipeline.detect_edges")
+    @patch("fetch_guard.pipeline.static_fetch")
+    @patch("fetch_guard.pipeline.scan")
     def test_json_content_type_returns_formatted_json(
-        self, mock_guard, mock_client, mock_edge, mock_llms,
+        self, mock_scan, mock_static_fetch, mock_detect_edges,
+        mock_is_root, mock_check_llms,
     ):
-        mock_llms.check.return_value = _mock_llms_result()
-        mock_llms.is_root_url.return_value = False
-        mock_client.fetch.return_value = _mock_fetch_result(
+        mock_check_llms.return_value = _mock_llms_result()
+        mock_is_root.return_value = False
+        mock_static_fetch.return_value = _mock_fetch_result(
             html='{"key": "value"}',
             content_type="application/json",
         )
-        mock_edge.detect.return_value = _mock_edge_result()
-        mock_guard.scan.return_value = _OK_SCAN
+        mock_detect_edges.return_value = _mock_edge_result()
+        mock_scan.return_value = _OK_SCAN
 
         result = run("https://api.example.com/data")
 
@@ -495,92 +516,100 @@ class TestContentTypeRouting:
         assert result["js_hint"] is False
         assert result["sanitization"]["hidden_elements"] == 0
 
-    @patch("fetch_guard.pipeline.llms_txt_checker")
-    @patch("fetch_guard.pipeline.edge_detector")
-    @patch("fetch_guard.pipeline.fetch_client")
-    @patch("fetch_guard.pipeline.injection_guard")
+    @patch("fetch_guard.pipeline.check_llms_txt")
+    @patch("fetch_guard.pipeline.is_root_url")
+    @patch("fetch_guard.pipeline.detect_edges")
+    @patch("fetch_guard.pipeline.static_fetch")
+    @patch("fetch_guard.pipeline.scan")
     def test_plain_text_content_type_passthrough(
-        self, mock_guard, mock_client, mock_edge, mock_llms,
+        self, mock_scan, mock_static_fetch, mock_detect_edges,
+        mock_is_root, mock_check_llms,
     ):
-        mock_llms.check.return_value = _mock_llms_result()
-        mock_llms.is_root_url.return_value = False
-        mock_client.fetch.return_value = _mock_fetch_result(
+        mock_check_llms.return_value = _mock_llms_result()
+        mock_is_root.return_value = False
+        mock_static_fetch.return_value = _mock_fetch_result(
             html="Just some plain text.",
             content_type="text/plain",
         )
-        mock_edge.detect.return_value = _mock_edge_result()
-        mock_guard.scan.return_value = _OK_SCAN
+        mock_detect_edges.return_value = _mock_edge_result()
+        mock_scan.return_value = _OK_SCAN
 
         result = run("https://example.com/file.txt")
 
         assert result["content_type"] == "plain_text"
         assert result["body"] == "Just some plain text."
 
-    @patch("fetch_guard.pipeline.llms_txt_checker")
-    @patch("fetch_guard.pipeline.edge_detector")
-    @patch("fetch_guard.pipeline.fetch_client")
-    @patch("fetch_guard.pipeline.content_extractor")
-    @patch("fetch_guard.pipeline.html_sanitizer")
-    @patch("fetch_guard.pipeline.metadata_extractor")
-    @patch("fetch_guard.pipeline.link_extractor")
-    @patch("fetch_guard.pipeline.injection_guard")
+    @patch("fetch_guard.pipeline.check_llms_txt")
+    @patch("fetch_guard.pipeline.is_root_url")
+    @patch("fetch_guard.pipeline.detect_edges")
+    @patch("fetch_guard.pipeline.static_fetch")
+    @patch("fetch_guard.pipeline.extract_content")
+    @patch("fetch_guard.pipeline.sanitize")
+    @patch("fetch_guard.pipeline.extract_metadata")
+    @patch("fetch_guard.pipeline.extract_domains")
+    @patch("fetch_guard.pipeline.scan")
     def test_plain_text_with_html_body_routes_to_html_pipeline(
-        self, mock_guard, mock_links, mock_meta, mock_sanitizer,
-        mock_content, mock_client, mock_edge, mock_llms,
+        self, mock_scan, mock_extract_domains, mock_extract_meta,
+        mock_sanitize, mock_extract_content, mock_static_fetch,
+        mock_detect_edges, mock_is_root, mock_check_llms,
     ):
-        mock_llms.check.return_value = _mock_llms_result()
-        mock_llms.is_root_url.return_value = False
-        mock_client.fetch.return_value = _mock_fetch_result(
+        mock_check_llms.return_value = _mock_llms_result()
+        mock_is_root.return_value = False
+        mock_static_fetch.return_value = _mock_fetch_result(
             html="<!DOCTYPE html><html><body><p>Hello</p></body></html>",
             content_type="text/plain",
         )
-        mock_edge.detect.return_value = _mock_edge_result()
-        mock_sanitizer.sanitize.return_value = (
-            "<p>Hello</p>", _zero_tally(),
+        mock_detect_edges.return_value = _mock_edge_result()
+        mock_sanitize.return_value = (
+            "<p>Hello</p>", None, _zero_tally(),
         )
-        mock_content.extract.return_value = "Hello"
-        mock_meta.extract.return_value = _null_meta()
-        mock_links.extract_domains.return_value = []
-        mock_guard.scan.return_value = _OK_SCAN
+        mock_extract_content.return_value = "Hello"
+        mock_extract_meta.return_value = _null_meta()
+        mock_extract_domains.return_value = []
+        mock_scan.return_value = _OK_SCAN
 
         result = run("https://example.com")
 
         # Should have gone through HTML pipeline
         assert result["content_type"] == "html"
-        mock_sanitizer.sanitize.assert_called_once()
+        mock_sanitize.assert_called_once()
 
-    @patch("fetch_guard.pipeline.llms_txt_checker")
-    @patch("fetch_guard.pipeline.edge_detector")
-    @patch("fetch_guard.pipeline.fetch_client")
+    @patch("fetch_guard.pipeline.check_llms_txt")
+    @patch("fetch_guard.pipeline.is_root_url")
+    @patch("fetch_guard.pipeline.detect_edges")
+    @patch("fetch_guard.pipeline.static_fetch")
     def test_binary_content_type_raises(
-        self, mock_client, mock_edge, mock_llms,
+        self, mock_static_fetch, mock_detect_edges,
+        mock_is_root, mock_check_llms,
     ):
-        mock_llms.check.return_value = _mock_llms_result()
-        mock_llms.is_root_url.return_value = False
-        mock_client.fetch.return_value = _mock_fetch_result(
+        mock_check_llms.return_value = _mock_llms_result()
+        mock_is_root.return_value = False
+        mock_static_fetch.return_value = _mock_fetch_result(
             html="",
             content_type="application/pdf",
         )
-        mock_edge.detect.return_value = _mock_edge_result()
+        mock_detect_edges.return_value = _mock_edge_result()
 
         with pytest.raises(FetchError, match="Binary content type"):
             run("https://example.com/file.pdf")
 
-    @patch("fetch_guard.pipeline.llms_txt_checker")
-    @patch("fetch_guard.pipeline.edge_detector")
-    @patch("fetch_guard.pipeline.fetch_client")
-    @patch("fetch_guard.pipeline.injection_guard")
+    @patch("fetch_guard.pipeline.check_llms_txt")
+    @patch("fetch_guard.pipeline.is_root_url")
+    @patch("fetch_guard.pipeline.detect_edges")
+    @patch("fetch_guard.pipeline.static_fetch")
+    @patch("fetch_guard.pipeline.scan")
     def test_csv_content_type_returns_markdown_table(
-        self, mock_guard, mock_client, mock_edge, mock_llms,
+        self, mock_scan, mock_static_fetch, mock_detect_edges,
+        mock_is_root, mock_check_llms,
     ):
-        mock_llms.check.return_value = _mock_llms_result()
-        mock_llms.is_root_url.return_value = False
-        mock_client.fetch.return_value = _mock_fetch_result(
+        mock_check_llms.return_value = _mock_llms_result()
+        mock_is_root.return_value = False
+        mock_static_fetch.return_value = _mock_fetch_result(
             html="name,age\nAlice,30\nBob,25",
             content_type="text/csv",
         )
-        mock_edge.detect.return_value = _mock_edge_result()
-        mock_guard.scan.return_value = _OK_SCAN
+        mock_detect_edges.return_value = _mock_edge_result()
+        mock_scan.return_value = _OK_SCAN
 
         result = run("https://example.com/data.csv")
 
@@ -588,33 +617,37 @@ class TestContentTypeRouting:
         assert "| name | age |" in result["body"]
         assert "| Alice | 30 |" in result["body"]
 
-    @patch("fetch_guard.pipeline.llms_txt_checker")
-    @patch("fetch_guard.pipeline.edge_detector")
-    @patch("fetch_guard.pipeline.fetch_client")
-    @patch("fetch_guard.pipeline.injection_guard")
+    @patch("fetch_guard.pipeline.check_llms_txt")
+    @patch("fetch_guard.pipeline.is_root_url")
+    @patch("fetch_guard.pipeline.detect_edges")
+    @patch("fetch_guard.pipeline.static_fetch")
+    @patch("fetch_guard.pipeline.scan")
     def test_non_html_truncation_works(
-        self, mock_guard, mock_client, mock_edge, mock_llms,
+        self, mock_scan, mock_static_fetch, mock_detect_edges,
+        mock_is_root, mock_check_llms,
     ):
-        mock_llms.check.return_value = _mock_llms_result()
-        mock_llms.is_root_url.return_value = False
-        mock_client.fetch.return_value = _mock_fetch_result(
+        mock_check_llms.return_value = _mock_llms_result()
+        mock_is_root.return_value = False
+        mock_static_fetch.return_value = _mock_fetch_result(
             html="word1 word2 word3 word4 word5",
             content_type="text/plain",
         )
-        mock_edge.detect.return_value = _mock_edge_result()
-        mock_guard.scan.return_value = _OK_SCAN
+        mock_detect_edges.return_value = _mock_edge_result()
+        mock_scan.return_value = _OK_SCAN
 
         result = run("https://example.com/file.txt", max_words=3)
 
         assert result["truncated_at"] == 3
         assert result["body"] == "word1 word2 word3"
 
-    @patch("fetch_guard.pipeline.llms_txt_checker")
-    @patch("fetch_guard.pipeline.edge_detector")
-    @patch("fetch_guard.pipeline.fetch_client")
-    @patch("fetch_guard.pipeline.injection_guard")
+    @patch("fetch_guard.pipeline.check_llms_txt")
+    @patch("fetch_guard.pipeline.is_root_url")
+    @patch("fetch_guard.pipeline.detect_edges")
+    @patch("fetch_guard.pipeline.static_fetch")
+    @patch("fetch_guard.pipeline.scan")
     def test_xml_rss_content_type_renders_feed(
-        self, mock_guard, mock_client, mock_edge, mock_llms,
+        self, mock_scan, mock_static_fetch, mock_detect_edges,
+        mock_is_root, mock_check_llms,
     ):
         rss = """<?xml version="1.0"?>
         <rss version="2.0">
@@ -626,14 +659,14 @@ class TestContentTypeRouting:
             </item>
           </channel>
         </rss>"""
-        mock_llms.check.return_value = _mock_llms_result()
-        mock_llms.is_root_url.return_value = False
-        mock_client.fetch.return_value = _mock_fetch_result(
+        mock_check_llms.return_value = _mock_llms_result()
+        mock_is_root.return_value = False
+        mock_static_fetch.return_value = _mock_fetch_result(
             html=rss,
             content_type="application/rss+xml",
         )
-        mock_edge.detect.return_value = _mock_edge_result()
-        mock_guard.scan.return_value = _OK_SCAN
+        mock_detect_edges.return_value = _mock_edge_result()
+        mock_scan.return_value = _OK_SCAN
 
         result = run("https://example.com/feed.xml")
 

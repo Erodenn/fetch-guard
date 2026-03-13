@@ -3,7 +3,6 @@
 Uses extruct for JSON-LD and Open Graph, BeautifulSoup for plain meta tags.
 """
 
-import extruct
 from bs4 import BeautifulSoup
 
 
@@ -88,10 +87,11 @@ def _from_opengraph(items):
     return result
 
 
-def _from_metatags(html):
+def _from_metatags(html, soup=None):
     """Extract metadata from HTML meta tags using BeautifulSoup."""
     result = {}
-    soup = BeautifulSoup(html, "html.parser")
+    if soup is None:
+        soup = BeautifulSoup(html, "html.parser")
     for tag in soup.find_all("meta"):
         name = (tag.get("name") or "").lower()
         content = tag.get("content", "")
@@ -108,13 +108,19 @@ def _from_metatags(html):
     return result
 
 
-def extract(html):
+def extract(html, soup=None):
     """Extract structured metadata from HTML.
+
+    Args:
+        html: Raw HTML string.
+        soup: Optional pre-parsed BeautifulSoup tree (skips re-parsing for meta tags).
 
     Returns a dict with keys: title, author, date, description, canonical_url, image.
     All keys are always present; missing values are None.
     Priority: JSON-LD > OpenGraph > meta tags.
     """
+    import extruct
+
     try:
         data = extruct.extract(html, syntaxes=["json-ld", "opengraph"])
     except Exception:
@@ -123,7 +129,7 @@ def extract(html):
     # Extract from each source
     json_ld = _from_json_ld(data.get("json-ld", []))
     og = _from_opengraph(data.get("opengraph", []))
-    meta = _from_metatags(html)
+    meta = _from_metatags(html, soup=soup)
 
     # Merge with priority: JSON-LD > OG > meta
     merged = null_metadata()

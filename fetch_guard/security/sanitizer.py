@@ -75,7 +75,9 @@ def _strip_nonprinting(text):
 def sanitize(html):
     """Remove hidden content vectors from HTML.
 
-    Returns (cleaned_html_string, tally_dict).
+    Returns (cleaned_html_string, soup, tally_dict).
+    soup is the sanitized BeautifulSoup tree (before non-printing char strip),
+    suitable for reuse by metadata and link extractors.
     tally_dict has keys: hidden_elements, offscreen_elements, nonprinting_chars.
     """
     soup = BeautifulSoup(html, "html.parser")
@@ -104,10 +106,14 @@ def sanitize(html):
         element.decompose()
         tally["hidden_elements"] += 1
 
+    # Snapshot the sanitized soup before string conversion — metadata and link
+    # extractors can reuse this instead of re-parsing.
+    sanitized_soup = soup
+
     cleaned_html = str(soup)
 
     # Strip non-printing unicode from the HTML string
     cleaned_html, nonprinting_count = _strip_nonprinting(cleaned_html)
     tally["nonprinting_chars"] = nonprinting_count
 
-    return cleaned_html, tally
+    return cleaned_html, sanitized_soup, tally
