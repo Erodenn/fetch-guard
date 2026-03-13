@@ -5,6 +5,10 @@
 [![Python](https://img.shields.io/pypi/pyversions/fetch-guard)](https://pypi.org/project/fetch-guard/)
 [![License: MIT](https://badgen.net/github/license/Erodenn/fetch-guard)](LICENSE)
 
+<a href="https://glama.ai/mcp/servers/@Erodenn/fetch-guard">
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/@Erodenn/fetch-guard/badge" alt="fetch-guard MCP server" />
+</a>
+
 An [MCP](https://modelcontextprotocol.io/) server and CLI tool that fetches URLs and returns clean, LLM-ready markdown. A purpose-built extraction pipeline sanitizes HTML, pulls structured metadata, detects prompt injection attempts, and handles the edge cases that break naive fetchers: bot blocks, paywalls, login walls, non-HTML content types, and pages that require JavaScript to render.
 
 The core problem is straightforward: LLMs need web content, but raw HTML is noisy and potentially hostile. Fetched pages can contain hidden text, invisible Unicode, off-screen elements, and outright prompt injection attempts embedded in the content itself. This pipeline strips all of that before the content reaches the model.
@@ -79,6 +83,21 @@ Add the following to your MCP client config. Works with Claude Code, Claude Desk
   }
 }
 ```
+
+**Via Docker:**
+
+```json
+{
+  "mcpServers": {
+    "fetch-guard": {
+      "command": "docker",
+      "args": ["run", "-i", "--rm", "erodenn/fetch-guard"]
+    }
+  }
+}
+```
+
+> **Note:** The Docker image does not include Playwright. JavaScript rendering (`js: true`) is not available when running via Docker. Use the `uvx` or `pip` install if you need JS rendering.
 
 ### Verify
 
