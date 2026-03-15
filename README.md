@@ -245,7 +245,7 @@ Each module is a single-responsibility unit with a public function as its interf
 ## Development
 
 ```bash
-# Run tests (358 unit tests, all mocked — no network calls)
+# Run tests (414 unit tests, all mocked — no network calls)
 pytest
 
 # Run live integration tests (hits real URLs)
