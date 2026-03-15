@@ -3,7 +3,6 @@
 import pytest
 from fetch_guard.security import patterns as injection_patterns
 
-
 ACT_AS_PATTERN = next(p for name, p, _ in injection_patterns.PATTERNS if name == "act_as_if")
 
 
