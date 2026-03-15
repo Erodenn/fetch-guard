@@ -1,7 +1,7 @@
 """Content extraction — article body, links, metadata, content-type routing, and edge detection."""
 
 from .content import extract as extract_content
-from .content_type import CLASS_BINARY, CLASS_HTML, CLASS_UNKNOWN
+from .content_type import CLASS_BINARY, CLASS_HTML, CLASS_PLAIN_TEXT, CLASS_UNKNOWN
 from .content_type import classify as classify_content_type
 from .content_type import handle as handle_content_type
 from .edges import detect as detect_edges
@@ -12,6 +12,7 @@ from .metadata import null_metadata
 __all__ = [
     "CLASS_BINARY",
     "CLASS_HTML",
+    "CLASS_PLAIN_TEXT",
     "CLASS_UNKNOWN",
     "classify_content_type",
     "detect_edges",

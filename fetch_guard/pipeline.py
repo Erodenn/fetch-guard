@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 from .extraction import (
     CLASS_BINARY,
     CLASS_HTML,
+    CLASS_PLAIN_TEXT,
     CLASS_UNKNOWN,
     classify_content_type,
     detect_edges,
@@ -238,7 +239,7 @@ def run(url, timeout=180, max_words=None, strict=False, js=False, links="domains
             content_type, (raw_html[:500] if raw_html else ""),
         )
     else:
-        content_class = CLASS_HTML  # llms.txt always uses the HTML path
+        content_class = CLASS_PLAIN_TEXT  # llms.txt is plain text, not HTML
 
     if content_class == CLASS_BINARY:
         raise FetchError(
@@ -263,7 +264,7 @@ def run(url, timeout=180, max_words=None, strict=False, js=False, links="domains
             edge_result=edge_result,
             sanitization=_ZERO_TALLY,
             llms_txt_available=llms_txt_available,
-            llms_txt_replaced=False,
+            llms_txt_replaced=llms_txt_replaced,
             js_rendered=js_rendered,
             js_hint=False,
             retried=retried,

@@ -326,8 +326,7 @@ class TestEdgeCases:
 class TestLlmsTxt:
     """Tests for /llms.txt content replacement."""
 
-    @patch("fetch_guard.pipeline.null_metadata")
-    def test_llms_txt_replacement(self, mock_null_meta, mocked_pipeline):
+    def test_llms_txt_replacement(self, mocked_pipeline):
         ctx = mocked_pipeline
         ctx.apply({
             "check_llms_txt": _mock_llms_result(
@@ -335,15 +334,16 @@ class TestLlmsTxt:
                 content="# LLMs.txt content",
                 url="https://example.com/llms.txt",
             ),
-            "sanitize": ("# LLMs.txt content", None, _zero_tally()),
-            "extract_content": "LLMs.txt content",
         })
         ctx.is_root_url.return_value = True
-        mock_null_meta.return_value = _null_meta()
         result = run("https://example.com")
         assert result["llms_txt_available"] is True
         assert result["llms_txt_replaced"] is True
         assert result["url"] == "https://example.com/llms.txt"
+        assert "LLMs.txt content" in result["body"]
+        # llms.txt is plain text — must never touch the HTML extraction path
+        ctx.sanitize.assert_not_called()
+        ctx.extract_content.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
@@ -518,3 +518,152 @@ class TestSizeGuard:
         # Should not raise despite >20KB extracted content
         result = run("https://example.com", max_words=5)
         assert result["truncated_at"] == 5
+
+
+# ---------------------------------------------------------------------------
+# Playwright (js=True) full pipeline
+# ---------------------------------------------------------------------------
+
+class TestPlaywrightPipeline:
+    """Integration tests for the js=True pipeline path."""
+
+    def test_playwright_uses_playwright_fetcher(self, mocked_pipeline):
+        ctx = mocked_pipeline
+        result = run("https://example.com", js=True)
+        assert ctx.playwright_fetch.called
+        assert ctx.static_fetch.call_count == 0
+        assert result["js_rendered"] is True
+
+    def test_playwright_full_pipeline_key_fields(self, mocked_pipeline):
+        ctx = mocked_pipeline
+        result = run("https://example.com", js=True)
+        assert ctx.sanitize.called
+        assert ctx.extract_content.called
+        assert ctx.extract_metadata.called
+        assert ctx.scan.called
+        assert result["js_rendered"] is True
+        assert result["retried"] is False
+
+    def test_playwright_no_retry_on_bot_block(self, mocked_pipeline):
+        ctx = mocked_pipeline
+        ctx.apply({"detect_edges": _mock_edge_result(edge_type="bot_block", should_retry=True)})
+        result = run("https://example.com", js=True)
+        assert ctx.static_fetch.call_count == 0
+        assert result["retried"] is False
+
+    def test_playwright_extraction_fail_no_edge_raises(self, mocked_pipeline):
+        mocked_pipeline.apply({"extract_content": None})
+        with pytest.raises(FetchError, match="No content could be extracted from the page"):
+            run("https://example.com", js=True)
+
+    def test_playwright_extraction_fail_with_edge_includes_detail(self, mocked_pipeline):
+        mocked_pipeline.apply({
+            "detect_edges": _mock_edge_result(
+                edge_type="bot_block", detail="Cloudflare", should_retry=False
+            ),
+            "extract_content": None,
+        })
+        with pytest.raises(FetchError) as exc_info:
+            run("https://example.com", js=True)
+        assert "bot_block" in str(exc_info.value)
+        assert "Cloudflare" in str(exc_info.value)
+
+
+# ---------------------------------------------------------------------------
+# Retry failure path
+# ---------------------------------------------------------------------------
+
+class TestRetryFailure:
+    """Tests for the error path when the bot-block retry itself fails."""
+
+    def test_retry_failure_raises_fetch_error(self, mocked_pipeline):
+        ctx = mocked_pipeline
+        ctx.detect_edges.side_effect = [
+            _mock_edge_result(edge_type="bot_block", should_retry=True),
+            _mock_edge_result(),
+        ]
+        ctx.static_fetch.side_effect = [
+            _mock_fetch_result(),
+            _mock_fetch_result(error="connection refused"),
+        ]
+        with pytest.raises(FetchError, match="Error on retry:"):
+            run("https://example.com")
+
+
+# ---------------------------------------------------------------------------
+# Edge case + js_hint together
+# ---------------------------------------------------------------------------
+
+class TestEdgeCaseAndJsHint:
+    """Verify that edge_cases and js_hint can both be set in the same result."""
+
+    def test_edge_case_and_js_hint_coexist(self, mocked_pipeline):
+        mocked_pipeline.apply({
+            "detect_edges": _mock_edge_result(
+                edge_type="bot_block", detail="429", should_retry=False
+            ),
+            "extract_content": None,
+        })
+        result = run("https://example.com")
+        assert result["js_hint"] is True
+        assert result["edge_cases"] == {"type": "bot_block", "detail": "429"}
+
+
+# ---------------------------------------------------------------------------
+# Non-HTML content + edge detection
+# ---------------------------------------------------------------------------
+
+class TestNonHtmlEdgeCases:
+    """Verify edge detection results survive the non-HTML fast-path early return."""
+
+    def test_non_html_content_preserves_edge_case(self, mocked_pipeline):
+        mocked_pipeline.apply({
+            "static_fetch": _mock_fetch_result(
+                html='{"k": "v"}', content_type="application/json"
+            ),
+            "detect_edges": _mock_edge_result(
+                edge_type="login_wall", detail="auth required", should_retry=False
+            ),
+        })
+        result = run("https://example.com")
+        assert result["edge_cases"] == {"type": "login_wall", "detail": "auth required"}
+        assert "json" in result["body"]
+
+
+# ---------------------------------------------------------------------------
+# llms.txt safety: scan + truncation still active
+# ---------------------------------------------------------------------------
+
+class TestLlmsTxtSafety:
+    """Verify injection scanning and truncation apply to llms.txt content."""
+
+    def test_llms_txt_body_is_scanned(self, mocked_pipeline):
+        ctx = mocked_pipeline
+        high_risk = {"risk": "HIGH", "matches": [{"pattern": "ignore_previous", "severity": "high", "snippet": "x"}]}
+        ctx.is_root_url.return_value = True
+        ctx.apply({
+            "check_llms_txt": _mock_llms_result(
+                available=True, content="# Docs\nSome content", url="https://example.com/llms.txt"
+            ),
+            "scan": high_risk,
+        })
+        result = run("https://example.com")
+        assert result["risk_level"] == "HIGH"
+        assert ctx.scan.called
+        # plain_text path calls scan() directly — no metadata scan or merge
+        ctx.scan_metadata.assert_not_called()
+        ctx.merge_scan_results.assert_not_called()
+
+    def test_llms_txt_truncation_applied(self, mocked_pipeline):
+        ctx = mocked_pipeline
+        ctx.is_root_url.return_value = True
+        # llms.txt now routes through the plain_text fast path, so truncation
+        # is applied directly to the llms.txt content (not extract_content).
+        long_content = ("word " * 500).strip()
+        ctx.apply({
+            "check_llms_txt": _mock_llms_result(
+                available=True, content=long_content, url="https://example.com/llms.txt"
+            ),
+        })
+        result = run("https://example.com", max_words=10)
+        assert result["truncated_at"] == 10
