@@ -85,10 +85,7 @@ def _scan_decoded(text, candidates_regex, decoder_fn, prefix):
                 matches.append({
                     "pattern": f"{prefix}:{name}",
                     "severity": severity,
-                    "snippet": text[
-                        max(0, candidate_match.start() - 20):
-                        min(len(text), candidate_match.end() + 20)
-                    ].replace("\n", " ").strip(),
+                    "snippet": _snippet(text, candidate_match),
                 })
                 break  # one match per pattern per candidate is enough
     return matches

@@ -49,6 +49,24 @@ def _truncate(text, max_words):
     return text, None
 
 
+def _check_extracted_size(markdown, max_words):
+    """Raise FetchError if extracted content exceeds the size guard limit.
+
+    Only checked when max_words is None — if the caller set an explicit word
+    cap they've already opted out of the guard.
+    """
+    if max_words is not None:
+        return
+    extracted_size = len(markdown.encode("utf-8"))
+    if extracted_size > _MAX_EXTRACTED_BYTES:
+        word_count = len(markdown.split())
+        raise FetchError(
+            f"Extracted content too large: {extracted_size // 1024}KB (~{word_count:,} words, "
+            f"limit: {_MAX_EXTRACTED_BYTES // 1024}KB). "
+            f"Pass max_words={word_count} to disable the size guard, or a lower value to truncate."
+        )
+
+
 def _build_edge_cases(edge_result):
     """Build the edge_cases dict from an edge detector result, or None."""
     if edge_result and edge_result["edge_type"]:
@@ -231,15 +249,7 @@ def run(url, timeout=180, max_words=None, strict=False, js=False, links="domains
 
         markdown = handle_content_type(content_class, raw_html)
         risk_result = scan(markdown)
-        if max_words is None:
-            extracted_size = len(markdown.encode("utf-8"))
-            if extracted_size > _MAX_EXTRACTED_BYTES:
-                word_count = len(markdown.split())
-                raise FetchError(
-                    f"Extracted content too large: {extracted_size // 1024}KB (~{word_count:,} words, "
-                    f"limit: {_MAX_EXTRACTED_BYTES // 1024}KB). "
-                    f"Pass max_words={word_count} to disable the size guard, or a lower value to truncate."
-                )
+        _check_extracted_size(markdown, max_words)
         markdown, truncated_at = _truncate(markdown, max_words)
 
         return _build_result(
@@ -298,15 +308,7 @@ def run(url, timeout=180, max_words=None, strict=False, js=False, links="domains
     risk_result = merge_scan_results([body_risk, meta_risk])
 
     # Size guard — post-extraction (HTML path)
-    if max_words is None:
-        extracted_size = len(markdown.encode("utf-8"))
-        if extracted_size > _MAX_EXTRACTED_BYTES:
-            word_count = len(markdown.split())
-            raise FetchError(
-                f"Extracted content too large: {extracted_size // 1024}KB (~{word_count:,} words, "
-                f"limit: {_MAX_EXTRACTED_BYTES // 1024}KB). "
-                f"Pass max_words={word_count} to disable the size guard, or a lower value to truncate."
-            )
+    _check_extracted_size(markdown, max_words)
 
     # 12. Truncate
     markdown, truncated_at = _truncate(markdown, max_words)
