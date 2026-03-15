@@ -1,0 +1,69 @@
+- url: https://github.com/settings/profile
+  description: GitHub settings login wall
+  timeout: 30
+  assertions:
+    fields:
+      edge_cases.type: login_wall
+
+- url: https://www.linkedin.com/in/williamhgates
+  description: LinkedIn profile bot block
+  timeout: 30
+  allow_fetch_error: true
+
+- url: https://github.com/notifications
+  description: GitHub notifications login wall
+  timeout: 30
+  assertions:
+    fields:
+      edge_cases.type: login_wall
+
+- url: https://github.com/stars
+  description: GitHub stars login wall
+  timeout: 30
+  assertions:
+    fields:
+      edge_cases.type: login_wall
+
+- url: https://github.com/watching
+  description: GitHub watching login wall
+  timeout: 30
+  assertions:
+    fields:
+      edge_cases.type: login_wall
+
+- url: https://github.com/codespaces
+  description: GitHub codespaces login wall
+  timeout: 30
+  assertions:
+    fields:
+      edge_cases.type: login_wall
+
+- url: https://www.reddit.com/message/inbox/
+  description: Reddit inbox login wall
+  timeout: 30
+  assertions:
+    fields:
+      edge_cases.type: login_wall
+
+- url: https://store.steampowered.com/account/
+  description: Steam account login wall
+  timeout: 30
+  assertions:
+    fields:
+      edge_cases.type: login_wall
+
+- url: https://www.glassdoor.com/Reviews/index.htm
+  description: Glassdoor reviews bot block
+  timeout: 30
+  allow_fetch_error: true
+  assertions:
+    fields:
+      edge_cases.type: bot_block
+
+- url: https://www.wsj.com/economy
+  description: WSJ economy bot block
+  timeout: 30
+  allow_fetch_error: true
+  assertions:
+    fields:
+      edge_cases.type: bot_block

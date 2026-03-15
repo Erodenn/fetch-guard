@@ -1,0 +1,95 @@
+- url: https://feeds.bbci.co.uk/news/rss.xml
+  description: BBC RSS feed XML
+  timeout: 30
+  assertions:
+    min_body_length: 50
+    fields:
+      content_type: xml
+
+- url: https://api.github.com/repos/anthropics/claude-code
+  description: GitHub API JSON endpoint
+  timeout: 30
+  assertions:
+    min_body_length: 50
+    fields:
+      content_type: json
+
+- url: https://www.google.com/robots.txt
+  description: Google robots.txt plain text
+  timeout: 30
+  assertions:
+    min_body_length: 1
+    fields:
+      content_type: plain_text
+
+- url: https://feeds.npr.org/1001/rss.xml
+  description: NPR News RSS feed
+  timeout: 30
+  assertions:
+    min_body_length: 100
+    fields:
+      content_type: xml
+
+- url: https://github.blog/feed/
+  description: GitHub Blog Atom feed
+  timeout: 30
+  assertions:
+    min_body_length: 100
+    fields:
+      content_type: xml
+
+- url: https://www.sitemaps.org/sitemap.xml
+  description: sitemaps.org XML sitemap
+  timeout: 30
+  assertions:
+    min_body_length: 50
+    fields:
+      content_type: xml
+
+- url: https://api.github.com/users/torvalds
+  description: GitHub API user object JSON
+  timeout: 30
+  assertions:
+    min_body_length: 50
+    fields:
+      content_type: json
+
+- url: https://api.github.com/orgs/python
+  description: GitHub API org object JSON
+  timeout: 30
+  assertions:
+    min_body_length: 50
+    fields:
+      content_type: json
+
+- url: https://api.github.com/repos/python/cpython/tags
+  description: GitHub API repo tags JSON array
+  timeout: 30
+  assertions:
+    min_body_length: 50
+    fields:
+      content_type: json
+
+- url: https://raw.githubusercontent.com/torvalds/linux/master/COPYING
+  description: Linux kernel COPYING license raw text
+  timeout: 30
+  assertions:
+    min_body_length: 50
+    fields:
+      content_type: plain_text
+
+- url: https://raw.githubusercontent.com/github/gitignore/main/Python.gitignore
+  description: Python.gitignore raw text
+  timeout: 30
+  assertions:
+    min_body_length: 50
+    fields:
+      content_type: plain_text
+
+- url: https://www.iana.org/robots.txt
+  description: IANA robots.txt minimal plain text
+  timeout: 30
+  assertions:
+    min_body_length: 1
+    fields:
+      content_type: plain_text

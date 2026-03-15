@@ -1,0 +1,73 @@
+- url: https://en.wikipedia.org/wiki/Prompt_injection
+  description: Wikipedia Prompt injection article
+  timeout: 30
+  max_words: 5000
+  assertions:
+    injection_match_count_min: 1
+
+- url: https://gist.githubusercontent.com/Erodenn/d123c7590b3beead26b0d4e2521acb3f/raw/injection_test_payload.txt
+  description: Controlled high-severity injection payload gist
+  timeout: 30
+  assertions:
+    fields:
+      risk_level: HIGH
+    injection_match_count_min: 3
+
+- url: https://cheatsheetseries.owasp.org/cheatsheets/LLM_Prompt_Injection_Prevention_Cheat_Sheet.html
+  description: OWASP LLM prompt injection prevention cheat sheet
+  timeout: 30
+  assertions:
+    min_body_length: 500
+    injection_match_count_min: 10
+    fields:
+      risk_level: HIGH
+
+- url: https://owasp.org/www-community/attacks/PromptInjection
+  description: OWASP community prompt injection attack page
+  timeout: 30
+  assertions:
+    min_body_length: 200
+    injection_match_count_min: 2
+    fields:
+      risk_level: HIGH
+
+- url: https://genai.owasp.org/llmrisk2023-24/llm01-24-prompt-injection/
+  description: OWASP GenAI LLM01 2024 prompt injection
+  timeout: 30
+  assertions:
+    min_body_length: 300
+    injection_match_count_min: 1
+    fields:
+      risk_level: HIGH
+
+- url: https://genai.owasp.org/llmrisk/llm01-prompt-injection/
+  description: OWASP GenAI LLM01 2025 prompt injection (clean render)
+  timeout: 30
+  assertions:
+    min_body_length: 200
+    fields:
+      risk_level: OK
+
+- url: https://arxiv.org/abs/2302.12173
+  description: arXiv indirect prompt injection paper abstract
+  timeout: 30
+  assertions:
+    min_body_length: 100
+    fields:
+      risk_level: OK
+
+- url: https://arxiv.org/abs/2306.05499
+  description: arXiv prompt injection against LLM apps abstract
+  timeout: 30
+  assertions:
+    min_body_length: 100
+    fields:
+      risk_level: OK
+
+- url: https://arxiv.org/abs/2410.23308
+  description: arXiv systematic prompt injection analysis abstract
+  timeout: 30
+  assertions:
+    min_body_length: 100
+    fields:
+      risk_level: OK

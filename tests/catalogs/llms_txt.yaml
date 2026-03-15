@@ -1,0 +1,89 @@
+- url: https://anthropic.com
+  description: anthropic.com — llms.txt removed
+  timeout: 30
+  assertions:
+    fields:
+      llms_txt_available: false
+      llms_txt_replaced: false
+
+- url: https://docs.anthropic.com
+  description: docs.anthropic.com — llms.txt removed
+  timeout: 30
+  assertions:
+    fields:
+      llms_txt_available: false
+
+- url: https://owensterling.com
+  description: owensterling.com root — llms.txt replaces body
+  timeout: 30
+  assertions:
+    fields:
+      llms_txt_available: true
+      llms_txt_replaced: true
+
+- url: https://supabase.com
+  description: supabase root — llms.txt replaces body
+  timeout: 30
+  assertions:
+    fields:
+      llms_txt_available: true
+      llms_txt_replaced: true
+
+- url: https://vercel.com
+  description: vercel root — llms.txt replaces body
+  timeout: 30
+  max_words: 50000
+  assertions:
+    fields:
+      llms_txt_available: true
+      llms_txt_replaced: true
+
+- url: https://firecrawl.dev
+  description: firecrawl root — llms.txt replaces body
+  timeout: 30
+  assertions:
+    fields:
+      llms_txt_available: true
+      llms_txt_replaced: true
+
+- url: https://github.com
+  description: github root — llms.txt replaces body
+  timeout: 30
+  max_words: 50000
+  assertions:
+    fields:
+      llms_txt_available: true
+      llms_txt_replaced: true
+
+- url: https://developers.cloudflare.com/workers/
+  description: cloudflare workers docs — llms.txt available not replacing
+  timeout: 30
+  assertions:
+    fields:
+      llms_txt_available: true
+      llms_txt_replaced: false
+
+- url: https://supabase.com/docs/guides/database/overview
+  description: supabase deep docs URL — llms.txt available not replacing
+  timeout: 30
+  assertions:
+    fields:
+      llms_txt_available: true
+      llms_txt_replaced: false
+
+- url: https://stackoverflow.com/questions/11828270/how-do-i-exit-vim
+  description: stackoverflow — no llms.txt
+  timeout: 30
+  assertions:
+    fields:
+      llms_txt_available: false
+      llms_txt_replaced: false
+
+- url: https://en.wikipedia.org/wiki/Large_language_model
+  description: wikipedia — no llms.txt
+  timeout: 30
+  max_words: 50000
+  assertions:
+    fields:
+      llms_txt_available: false
+      llms_txt_replaced: false

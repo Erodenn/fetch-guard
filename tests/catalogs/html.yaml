@@ -1,0 +1,114 @@
+- url: https://en.wikipedia.org/wiki/Python_(programming_language)
+  description: Wikipedia Python article
+  timeout: 30
+  max_words: 5000
+  assertions:
+    min_body_length: 1000
+    links_count_min: 1
+    fields:
+      risk_level: OK
+      edge_cases: null
+      llms_txt_available: false
+
+- url: https://www.bbc.com/news
+  description: BBC News homepage
+  timeout: 30
+  assertions:
+    min_body_length: 100
+
+- url: http://nytimes.com
+  description: NYTimes HTTP redirect
+  timeout: 30
+  assertions:
+    url_changed: true
+
+- url: https://example.com
+  description: example.com minimal page
+  timeout: 30
+
+- url: https://ogp.me/
+  description: ogp.me OpenGraph spec
+  timeout: 30
+  assertions:
+    min_body_length: 500
+    links_count_min: 5
+    fields:
+      risk_level: OK
+      edge_cases: null
+      llms_txt_available: false
+
+- url: https://schema.org/
+  description: schema.org rich metadata homepage
+  timeout: 30
+  assertions:
+    min_body_length: 200
+    links_count_min: 3
+    fields:
+      risk_level: OK
+      edge_cases: null
+      llms_txt_available: false
+
+- url: https://www.w3.org/
+  description: W3C homepage
+  timeout: 30
+  assertions:
+    min_body_length: 200
+    fields:
+      risk_level: OK
+      edge_cases: null
+      llms_txt_available: false
+
+- url: https://fr.wikipedia.org/wiki/Intelligence_artificielle
+  description: Wikipedia French non-English article
+  timeout: 30
+  max_words: 5000
+  assertions:
+    min_body_length: 1000
+    links_count_min: 50
+    fields:
+      risk_level: OK
+      edge_cases: null
+      llms_txt_available: false
+
+- url: https://arxiv.org/abs/1706.03762
+  description: arXiv academic paper abstract
+  timeout: 30
+  assertions:
+    min_body_length: 300
+    links_count_min: 10
+    fields:
+      risk_level: OK
+      edge_cases: null
+      llms_txt_available: false
+
+- url: https://www.nasa.gov/
+  description: NASA.gov WordPress OpenGraph metadata
+  timeout: 30
+  assertions:
+    min_body_length: 200
+    links_count_min: 5
+    fields:
+      risk_level: OK
+      edge_cases: null
+      llms_txt_available: false
+
+- url: https://www.ietf.org/
+  description: IETF standards body many links
+  timeout: 30
+  assertions:
+    min_body_length: 200
+    links_count_min: 5
+    fields:
+      risk_level: OK
+      edge_cases: null
+      llms_txt_available: false
+
+- url: https://httpbin.org/
+  description: httpbin minimal content sparse metadata
+  timeout: 30
+  assertions:
+    min_body_length: 10
+    fields:
+      risk_level: OK
+      edge_cases: null
+      llms_txt_available: false
