@@ -59,6 +59,21 @@ def _build_edge_cases(edge_result):
     return None
 
 
+def _build_status(risk_result, content_type, edge_result, sanitization, js_rendered, retried, truncated_at):
+    """Build the quick-glance status dict shown at the top of the tool result."""
+    sanitized_total = sum(sanitization.values())
+    edge_cases = _build_edge_cases(edge_result)
+    return {
+        "risk": risk_result["risk"],
+        "content_type": content_type,
+        "edge": edge_cases["type"] if edge_cases else None,
+        "sanitized": sanitized_total,
+        "retried": retried,
+        "js": js_rendered,
+        "truncated_at": truncated_at,
+    }
+
+
 def _build_result(
     *,
     url,
@@ -79,6 +94,7 @@ def _build_result(
 ):
     """Assemble the final pipeline result dict."""
     return {
+        "status": _build_status(risk_result, content_type, edge_result, sanitization, js_rendered, retried, truncated_at),
         "url": url,
         "fetched_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "body": body,

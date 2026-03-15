@@ -182,10 +182,24 @@ Five sections, printed to stdout:
 Returns a structured dict:
 
 ```
-url, fetched_at, body, content_type, metadata, links, links_mode,
+status, url, fetched_at, body, content_type, metadata, links, links_mode,
 risk_level, injection_matches, edge_cases, sanitization,
 llms_txt_available, llms_txt_replaced, js_rendered, js_hint,
 retried, truncated_at
+```
+
+`status` is a quick-glance summary dict designed to be readable without expanding the full result:
+
+```json
+{
+  "risk": "OK",
+  "content_type": "html",
+  "edge": null,
+  "sanitized": 193,
+  "retried": false,
+  "js": false,
+  "truncated_at": null
+}
 ```
 
 When `--strict` is set and the risk level is `HIGH`, the CLI exits with code 2 and the MCP server raises an error response. The full result is still available in both cases.

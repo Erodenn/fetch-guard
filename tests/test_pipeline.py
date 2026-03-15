@@ -96,7 +96,7 @@ class TestRunSuccess:
         result = run("https://example.com")
 
         expected_keys = {
-            "url", "fetched_at", "body", "content_type", "metadata",
+            "status", "url", "fetched_at", "body", "content_type", "metadata",
             "links", "links_mode", "risk_level", "injection_matches",
             "edge_cases", "sanitization", "llms_txt_available",
             "llms_txt_replaced", "js_rendered", "js_hint",
@@ -144,6 +144,92 @@ class TestRunSuccess:
         assert result["truncated_at"] is None
         assert result["edge_cases"] is None
         assert result["sanitization"] == tally
+
+
+# ---------------------------------------------------------------------------
+# Status field
+# ---------------------------------------------------------------------------
+
+class TestStatusField:
+    """Tests for the status quick-glance dict at the top of the result."""
+
+    def _run_with(self, *, tally=None, risk="OK", edge_type=None, retried=False,
+                  js=False, truncated=False):
+        """Helper: run the pipeline with controlled mock values and return the result."""
+        from unittest.mock import patch as _patch
+        tally = tally or _zero_tally()
+        matches = [{"pattern": "ignore_previous", "severity": "high", "snippet": "x"}] if risk == "HIGH" else []
+        merged_result = {"risk": risk, "matches": matches}
+        ok_scan = {"risk": "OK", "matches": []}
+        with (
+            _patch("fetch_guard.pipeline.check_llms_txt", return_value=_mock_llms_result()),
+            _patch("fetch_guard.pipeline.is_root_url", return_value=False),
+            _patch("fetch_guard.pipeline.detect_edges", return_value=_mock_edge_result(edge_type=edge_type)),
+            _patch("fetch_guard.pipeline.static_fetch", return_value=_mock_fetch_result()),
+            _patch("fetch_guard.pipeline.extract_content", return_value="body text here"),
+            _patch("fetch_guard.pipeline.sanitize", return_value=("<p>body text here</p>", None, tally)),
+            _patch("fetch_guard.pipeline.extract_metadata", return_value=_null_meta()),
+            _patch("fetch_guard.pipeline.extract_domains", return_value=[]),
+            _patch("fetch_guard.pipeline.scan", return_value=ok_scan),
+            _patch("fetch_guard.pipeline.scan_metadata", return_value=ok_scan),
+            _patch("fetch_guard.pipeline.merge_scan_results", return_value=merged_result),
+        ):
+            return run("https://example.com", max_words=1 if truncated else None, js=js)
+
+    def test_status_is_first_key(self):
+        result = self._run_with()
+        assert list(result.keys())[0] == "status"
+
+    def test_status_has_all_fields(self):
+        result = self._run_with()
+        assert set(result["status"].keys()) == {
+            "risk", "content_type", "edge", "sanitized", "retried", "js", "truncated_at",
+        }
+
+    def test_status_risk_ok(self):
+        result = self._run_with(risk="OK")
+        assert result["status"]["risk"] == "OK"
+
+    def test_status_risk_high(self):
+        result = self._run_with(risk="HIGH")
+        assert result["status"]["risk"] == "HIGH"
+
+    def test_status_edge_none(self):
+        result = self._run_with(edge_type=None)
+        assert result["status"]["edge"] is None
+
+    def test_status_edge_present(self):
+        result = self._run_with(edge_type="paywall")
+        assert result["status"]["edge"] == "paywall"
+
+    def test_status_sanitized_total(self):
+        tally = _zero_tally(hidden_elements=3, offscreen_elements=2, nonprinting_chars=5)
+        result = self._run_with(tally=tally)
+        assert result["status"]["sanitized"] == 10
+
+    def test_status_sanitized_zero(self):
+        result = self._run_with(tally=_zero_tally())
+        assert result["status"]["sanitized"] == 0
+
+    def test_status_js_false(self):
+        result = self._run_with(js=False)
+        assert result["status"]["js"] is False
+
+    def test_status_retried_false(self):
+        result = self._run_with()
+        assert result["status"]["retried"] is False
+
+    def test_status_truncated_at_none(self):
+        result = self._run_with()
+        assert result["status"]["truncated_at"] is None
+
+    def test_status_truncated_at_set(self):
+        result = self._run_with(truncated=True)
+        assert result["status"]["truncated_at"] == 1
+
+    def test_status_content_type_html(self):
+        result = self._run_with()
+        assert result["status"]["content_type"] == "html"
 
 
 # ---------------------------------------------------------------------------
