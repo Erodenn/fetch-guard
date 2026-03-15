@@ -5,7 +5,9 @@ Severity levels: "high" (system prompt overrides, ignore-previous)
                  "medium" (role-play, structural fakes)
 """
 
+import json
 import re
+from pathlib import Path
 
 # Severity constants — single source of truth for pattern severity values
 SEVERITY_HIGH = "high"
@@ -101,6 +103,34 @@ PATTERNS = [
         "high",
     ),
 ]
+
+def _load_multilingual():
+    """Load and compile multilingual injection patterns from JSON.
+
+    Raises RuntimeError at import time if the JSON is missing, malformed,
+    or any regex fails to compile.
+    """
+    path = Path(__file__).parent / "multilingual_patterns.json"
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError as e:
+        raise RuntimeError(f"multilingual_patterns.json not found at {path}") from e
+    except json.JSONDecodeError as e:
+        raise RuntimeError(f"multilingual_patterns.json is malformed: {e}") from e
+    result = []
+    for phrase_key, entry in data.items():
+        severity = entry["severity"]
+        for lang_code, regex_str in entry["translations"].items():
+            name = f"{phrase_key}_{lang_code}"
+            try:
+                result.append((name, re.compile(regex_str, re.IGNORECASE), severity))
+            except re.error as e:
+                raise RuntimeError(f"Failed to compile multilingual pattern '{name}': {e}") from e
+    return result
+
+
+MULTILINGUAL_PATTERNS = _load_multilingual()
+PATTERNS = PATTERNS + MULTILINGUAL_PATTERNS
 
 # Filtered list of high-severity patterns only — used by decode-and-scan
 # (no point decoding base64/hex to check for medium-severity roleplay patterns)

@@ -1,0 +1,68 @@
+{
+  "ignore_previous": {
+    "severity": "high",
+    "translations": {
+      "es": "ignora(?:r)?\\s+(?:toda[s]?\\s+las?\\s+)?(?:instrucciones?|directrices?|indicaciones?)\\s+(?:anteriores?|previas?|de\\s+antes)",
+      "fr": "ignorez?\\s+(?:toutes?\\s+les\\s+)?(?:instructions?|directives?)\\s+(?:pr[eé]c[eé]dentes?|ant[eé]rieures?)",
+      "de": "(?:ignoriere|ignorieren\\s+Sie)\\s+(?:alle\\s+)?(?:vorherigen?|fr[uü]heren?|bisherigen?)\\s+(?:anweisungen?|instruktionen?|befehle|prompts?)",
+      "ja": "(?:以前|前)の?(?:すべての?|全ての?)?の?(?:指示|命令|プロンプト|内容)を?は?(?:すべて|全て|全部)?無視",
+      "zh": "忽略(?:所有)?(?:之前|先前|以前|上面|以上)的?(?:指令|指示|提示|命令|内容)",
+      "pt": "ignora(?:r)?\\s+(?:todas?\\s+as\\s+)?(?:instru[cç][oõ]es?|diretivas?)\\s+(?:anteriores?|pr[eé]vias?|de\\s+antes)"
+    }
+  },
+  "system_prompt_override": {
+    "severity": "high",
+    "translations": {
+      "es": "(?:nuev[oa]|actualizado?a?|revisado?a?)\\s+(?:prompt\\s+(?:de\\s+)?sistema|instrucciones?\\s+del\\s+sistema)",
+      "fr": "(?:nouveau(?:vel)?|mis\\s+[aà]\\s+jour|r[eé]vis[eé])\\s+(?:prompt\\s+(?:du\\s+)?syst[eè]me|instructions?\\s+(?:du\\s+)?syst[eè]me|invite\\s+(?:du\\s+)?syst[eè]me)",
+      "de": "(?:neuer?|aktualisierter?|[uü]berarbeiteter?)\\s+(?:system-?prompt|systemanweisung|system(?:instruktion|befehl))",
+      "ja": "(?:新しい|更新(?:された|する)|改訂(?:された|する))システムプロンプト|システムプロンプトを?の?(?:変更|更新|上書き)",
+      "zh": "(?:新的?|更新(?:的|后的)?|修改(?:的|后的)?|修订(?:的|后的)?)\\s*(?:系统提示(?:词)?|系统指令|系统消息)",
+      "pt": "(?:nov[oa]|actualizado?|atualizado?|revisado?)\\s+(?:prompt\\s+de\\s+sistema|instru[cç][oõ]es?\\s+do\\s+sistema)"
+    }
+  },
+  "new_instructions": {
+    "severity": "high",
+    "translations": {
+      "es": "(?:nuevas?|actualizadas?|revisadas?)\\s+instrucciones?\\s*:",
+      "fr": "(?:nouvelles?|mises?\\s+[aà]\\s+jour|r[eé]vis[eé]es?)\\s+instructions?\\s*:",
+      "de": "(?:neue[rn]?|aktualisierte[rn]?|[uü]berarbeitete[rn]?)\\s+(?:anweisungen?|instruktionen?)\\s*:",
+      "ja": "(?:新しい|更新(?:された)?|改訂(?:された)?)(?:指示|命令|インストラクション)[：:]",
+      "zh": "(?:新的?|更新的?|修改的?)(?:指令|指示|指导|说明)\\s*[：:]",
+      "pt": "(?:novas?|actualizadas?|atualizadas?|revisadas?)\\s+instru[cç][oõ]es?\\s*:"
+    }
+  },
+  "disregard_above": {
+    "severity": "high",
+    "translations": {
+      "es": "(?:descarta?r?|ignora?r?|no\\s+(?:tengas?|hagas?)\\s+(?:en\\s+cuenta|caso\\s+(?:de)?)?)\\s+(?:todo\\s+lo\\s+)?(?:anterior(?:mente)?|previo|(?:lo\\s+)?de\\s+arriba)",
+      "fr": "(?:ignorez?|ne\\s+(?:tenez?|tiens?)\\s+pas\\s+compte\\s+de|faites?\\s+abstraction\\s+de)\\s+(?:tout\\s+ce\\s+qui\\s+pr[eé]c[eè]de|ce\\s+qui\\s+est\\s+ci-dessus|(?:tout\\s+)?ce\\s+qui\\s+(?:pr[eé]c[eè]de|est\\s+au-dessus))",
+      "de": "(?:ignoriere|missachte|lasse?\\s+(?:au[sß]er\\s+[Aa]cht|unbeachtet))\\s+(?:(?:alles?|das)\\s+)?(?:Vorherige|Obige|oben\\s+(?:Genannte|Stehende)|Bisherige)",
+      "ja": "(?:上(?:記|の)|以前の?|今までの?|これまでの?)の?(?:すべての?|全ての?|内容)?を?は?(?:無視|気にしない|無効(?:にする)?)",
+      "zh": "无视(?:上面|上述|以上|之前)(?:所有)?的?(?:内容|指令|指示|一切)",
+      "pt": "(?:desconsidere?r?|ignore?r?|n[aã]o\\s+leve\\s+em\\s+(?:conta|considera[cç][aã]o))\\s+(?:tudo\\s+(?:o\\s+que\\s+)?(?:est[aá]\\s+)?acima|(?:tudo\\s+)?(?:o\\s+)?anterior(?:mente)?)"
+    }
+  },
+  "forget_everything": {
+    "severity": "high",
+    "translations": {
+      "es": "olvida(?:r)?\\s+(?:todo\\s+)?(?:lo\\s+)?(?:anterior|previo|de\\s+antes|(?:lo\\s+que\\s+)?(?:estaba?\\s+)?antes)",
+      "fr": "oubliez?\\s+(?:tout\\s+)?(?:ce\\s+qui\\s+pr[eé]c[eè]de|(?:ce\\s+qui\\s+)?[eé]tait\\s+avant|(?:tout\\s+)?ce\\s+(?:qu[e']il\\s+y\\s+avait\\s+)?avant)",
+      "de": "vergiss?\\s+(?:alles?\\s+)?(?:Vorherige?|Bisherige?|oben\\s+(?:Genannte|Stehende)|was\\s+(?:zuvor|vorher|oben)\\s+(?:stand|gesagt|geschrieben)(?:\\s+wurde)?)",
+      "ja": "(?:今まで|これまで|以前)(?:の(?:こと)?)?(?:すべて|全て|全部)を?忘れ",
+      "zh": "忘记(?:之前|以前|前面|上面)(?:所有)?的?(?:内容|一切|指令|指示|对话|交流)",
+      "pt": "esqueça?\\s+(?:tudo\\s+)?(?:o\\s+que\\s+(?:foi\\s+)?(?:dito|escrito)?\\s*)?(?:antes|acima|anteriormente)"
+    }
+  },
+  "you_are_now": {
+    "severity": "high",
+    "translations": {
+      "es": "(?:ahora\\s+eres?|eres?\\s+ahora)\\s+(?:un[ao]?|el|la)\\b",
+      "fr": "(?:tu\\s+es|vous\\s+[eê]tes)\\s+maintenant\\s+(?:un[e]?|le|la|l['’])\\b",
+      "de": "(?:du\\s+bist|Sie\\s+sind)\\s+jetzt\\s+(?:ein[e]?[rn]?|der|die|das)\\b",
+      "ja": "(?:今から|これから)[^\n。！？]{0,60}(?:です|だ|である|になれ|として(?:行動|振る舞))",
+      "zh": "(?:你|您)\\s*(?:现在|从现在(?:起|开始))\\s*(?:是|作为|扑演)|(?:现在|从现在(?:起|开始))\\s*(?:你|您)\\s*(?:是|作为|扑演)",
+      "pt": "(?:agora\\s+[eé][s]?|[eé][s]?\\s+agora)\\s+(?:um[a]?|o|a)\\b"
+    }
+  }
+}
