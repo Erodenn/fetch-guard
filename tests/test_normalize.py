@@ -1,7 +1,47 @@
 """Tests for text normalization — homoglyph/confusable mapping."""
 
 from fetch_guard.security import guard as injection_guard
-from fetch_guard.security.normalize import normalize_for_scan
+from fetch_guard.security.normalize import CONFUSABLES, normalize_for_scan
+
+
+class TestConfusablesMapping:
+    """Tests for the CONFUSABLES constant."""
+
+    def test_all_keys_are_single_chars(self):
+        assert all(len(k) == 1 for k in CONFUSABLES)
+
+    def test_all_values_are_single_ascii_chars(self):
+        for v in CONFUSABLES.values():
+            assert len(v) == 1
+            assert v.isascii()
+
+    def test_values_are_lowercase(self):
+        # Patterns use IGNORECASE so only lowercase ASCII targets are needed
+        assert all(v.islower() for v in CONFUSABLES.values())
+
+    def test_cyrillic_a_present(self):
+        assert "\u0430" in CONFUSABLES  # а → a
+        assert CONFUSABLES["\u0430"] == "a"
+
+    def test_cyrillic_e_present(self):
+        assert "\u0435" in CONFUSABLES  # е → e
+        assert CONFUSABLES["\u0435"] == "e"
+
+    def test_cyrillic_o_present(self):
+        assert "\u043e" in CONFUSABLES  # о → o
+        assert CONFUSABLES["\u043e"] == "o"
+
+    def test_cyrillic_c_present(self):
+        assert "\u0441" in CONFUSABLES  # с → c
+        assert CONFUSABLES["\u0441"] == "c"
+
+    def test_cyrillic_p_present(self):
+        assert "\u0440" in CONFUSABLES  # р → p
+        assert CONFUSABLES["\u0440"] == "p"
+
+    def test_cyrillic_i_present(self):
+        assert "\u0456" in CONFUSABLES  # і → i
+        assert CONFUSABLES["\u0456"] == "i"
 
 
 class TestNormalizeForScan:

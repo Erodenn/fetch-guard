@@ -60,6 +60,36 @@ def _null_meta(**overrides):
 _OK_SCAN = {"risk": "OK", "matches": []}
 
 
+def _build_pipeline_result(**overrides):
+    """Build a canonical pipeline result dict with sane defaults for all fields.
+
+    Callers pass only the keys relevant to their assertion. The status field
+    mirrors what _build_status() returns for an OK, html, no-edge, no-trim run.
+    """
+    result = {
+        "status": "OK | html",
+        "url": "https://example.com",
+        "fetched_at": "2026-01-01T00:00:00Z",
+        "body": "Hello world",
+        "content_type": "html",
+        "metadata": _null_meta(),
+        "links": [],
+        "links_mode": "domains",
+        "risk_level": "OK",
+        "injection_matches": [],
+        "edge_cases": None,
+        "sanitization": _zero_tally(),
+        "llms_txt_available": False,
+        "llms_txt_replaced": False,
+        "js_rendered": False,
+        "js_hint": False,
+        "retried": False,
+        "truncated_at": None,
+    }
+    result.update(overrides)
+    return result
+
+
 # ---------------------------------------------------------------------------
 # MockedPipelineContext
 # ---------------------------------------------------------------------------
