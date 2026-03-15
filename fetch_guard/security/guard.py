@@ -1,8 +1,10 @@
 """Session-salted tag wrapping, injection pattern scanning, and risk assessment."""
 
 import base64
+import codecs
 import re
 import secrets
+import urllib.parse
 
 from .normalize import normalize_for_scan
 from .patterns import HIGH_PATTERNS, PATTERNS, SEVERITY_HIGH
@@ -17,6 +19,8 @@ RISK_HIGH = "HIGH"
 # Decode-and-scan candidate regexes
 _BASE64_RE = re.compile(r"[A-Za-z0-9+/]{40,}={0,2}")
 _HEX_RE = re.compile(r"(?:[0-9a-fA-F]{2}){20,}")
+# 3+ consecutive %XX sequences — avoids false positives from incidental single-char encoding
+_PERCENT_RE = re.compile(r"(?:%[0-9a-fA-F]{2}){3,}")
 
 
 def generate_salt():
@@ -36,6 +40,11 @@ def _snippet(text, match):
     return text[start:end].replace("\n", " ").strip()
 
 
+def _rot13(text):
+    """Decode ROT13-encoded text. ASCII letters rotate; non-ASCII pass through unchanged."""
+    return codecs.encode(text, "rot_13")
+
+
 def _decode_base64(candidate):
     """Try to decode a base64 candidate to UTF-8 text."""
     try:
@@ -48,6 +57,14 @@ def _decode_hex(candidate):
     """Try to decode a hex candidate to UTF-8 text."""
     try:
         return bytes.fromhex(candidate).decode("utf-8", errors="ignore")
+    except Exception:
+        return ""
+
+
+def _decode_url(candidate):
+    """Decode a URL percent-encoded candidate to UTF-8 text."""
+    try:
+        return urllib.parse.unquote(candidate, errors="ignore")
     except Exception:
         return ""
 
@@ -80,10 +97,11 @@ def _scan_decoded(text, candidates_regex, decoder_fn, prefix):
 def scan(text):
     """Scan text for injection patterns.
 
-    Three-phase scan:
+    Four-phase scan:
     1. Run all PATTERNS against original text
     2. Normalize text (NFKC + confusable mapping), scan again for homoglyph bypasses
-    3. Decode-and-scan: find base64/hex encoded blocks, decode, scan with HIGH patterns
+    3. Decode-and-scan: find base64/hex/URL-percent-encoded blocks, decode, scan with HIGH patterns
+    4. ROT13 whole-document scan with HIGH patterns
 
     Returns a dict with:
         risk: "OK", "MEDIUM", or "HIGH"
@@ -122,16 +140,55 @@ def scan(text):
                     "snippet": _snippet(normalized, match),
                 })
 
-    # Phase 3: Decode-and-scan (base64 and hex)
+    # Phase 3: Decode-and-scan (base64, hex, and URL percent-encoding)
     matches.extend(_scan_decoded(text, _BASE64_RE, _decode_base64, "base64_decoded"))
     matches.extend(_scan_decoded(text, _HEX_RE, _decode_hex, "hex_decoded"))
+    matches.extend(_scan_decoded(text, _PERCENT_RE, _decode_url, "urldecoded"))
 
-    # Determine risk level
+    # Phase 4: ROT13 whole-document scan (HIGH patterns only)
+    rot13_text = _rot13(text)
+    if rot13_text != text:
+        for name, pattern, severity in HIGH_PATTERNS:
+            for match in pattern.finditer(rot13_text):
+                matches.append({
+                    "pattern": f"rot13:{name}",
+                    "severity": severity,
+                    "snippet": _snippet(rot13_text, match),
+                })
+
+    return _risk_from_matches(matches)
+
+
+def _risk_from_matches(matches):
+    """Determine risk level from a list of match dicts."""
     if not matches:
-        risk = RISK_OK
-    elif any(m["severity"] == SEVERITY_HIGH for m in matches):
-        risk = RISK_HIGH
-    else:
-        risk = RISK_MEDIUM
-
+        return {"risk": RISK_OK, "matches": []}
+    risk = RISK_HIGH if any(m["severity"] == SEVERITY_HIGH for m in matches) else RISK_MEDIUM
     return {"risk": risk, "matches": matches}
+
+
+def scan_metadata(metadata_dict):
+    """Scan metadata string fields for injection patterns.
+
+    Each match's pattern name is prefixed with "metadata:{field}:" to
+    indicate which field the injection was found in.
+    Returns {risk, matches} with the same structure as scan().
+    """
+    all_matches = []
+    for field, value in metadata_dict.items():
+        if not isinstance(value, str) or not value:
+            continue
+        result = scan(value)
+        for match in result["matches"]:
+            all_matches.append({
+                "pattern": f"metadata:{field}:{match['pattern']}",
+                "severity": match["severity"],
+                "snippet": match["snippet"],
+            })
+    return _risk_from_matches(all_matches)
+
+
+def merge_scan_results(results):
+    """Merge a list of scan result dicts. Risk level is the highest across all."""
+    all_matches = [m for r in results for m in r["matches"]]
+    return _risk_from_matches(all_matches)

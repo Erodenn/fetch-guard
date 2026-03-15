@@ -27,7 +27,7 @@ from .http import (
     playwright_fetch,
     static_fetch,
 )
-from .security import sanitize, scan
+from .security import merge_scan_results, sanitize, scan, scan_metadata
 
 _ZERO_TALLY = {"hidden_elements": 0, "offscreen_elements": 0, "nonprinting_chars": 0}
 
@@ -271,7 +271,9 @@ def run(url, timeout=180, max_words=None, strict=False, js=False, links="domains
         extracted_links = extract_domains(cleaned_html, url, soup=soup)
 
     # 11. Scan for injection
-    risk_result = scan(markdown)
+    body_risk = scan(markdown)
+    meta_risk = scan_metadata(metadata)
+    risk_result = merge_scan_results([body_risk, meta_risk])
 
     # Size guard — post-extraction (HTML path)
     if max_words is None:
