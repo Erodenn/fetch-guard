@@ -35,14 +35,24 @@ PATTERNS = [
     (
         "ignore_previous",
         re.compile(
-            r"ignore\s+(?:all\s+)?(?:previous|prior|above|earlier)\s+(?:instructions?|prompts?|context)",
+            r"ignore\s+(?:(?:all|the|its|these|those|any)\s+)?(?:previous|prior|above|earlier)"
+            r"\s+(?:instructions?|prompts?|context|directions?|commands?|directives?)",
             re.IGNORECASE,
         ),
         "high",
     ),
     (
+        "ignore_above_bare",
+        re.compile(
+            r"ignore\s+(?:(?:all|the|its|these|those|any)\s+)?(?:above)"
+            r"(?!\s+(?:instructions?|prompts?|context|directions?|commands?|directives?))\b",
+            re.IGNORECASE,
+        ),
+        "medium",
+    ),
+    (
         "disregard_above",
-        re.compile(r"disregard\s+(?:all\s+)?(?:above|previous|prior|earlier)", re.IGNORECASE),
+        re.compile(r"disregard\s+(?:(?:all|the)\s+)?(?:above|previous|prior|earlier)", re.IGNORECASE),
         "high",
     ),
     (
@@ -104,7 +114,7 @@ PATTERNS = [
     ),
 ]
 
-def _load_multilingual():
+def _load_multilingual() -> list[tuple[str, re.Pattern[str], str]]:
     """Load and compile multilingual injection patterns from JSON.
 
     Raises RuntimeError at import time if the JSON is missing, malformed,
@@ -129,9 +139,15 @@ def _load_multilingual():
     return result
 
 
-MULTILINGUAL_PATTERNS = _load_multilingual()
-PATTERNS = PATTERNS + MULTILINGUAL_PATTERNS
+PatternEntry = tuple[str, re.Pattern[str], str]
+
+MULTILINGUAL_PATTERNS: list[PatternEntry] = _load_multilingual()
+PATTERNS: list[PatternEntry] = PATTERNS + MULTILINGUAL_PATTERNS
 
 # Filtered list of high-severity patterns only — used by decode-and-scan
 # (no point decoding base64/hex to check for medium-severity roleplay patterns)
-HIGH_PATTERNS = [(name, pattern, severity) for name, pattern, severity in PATTERNS if severity == SEVERITY_HIGH]
+HIGH_PATTERNS: list[PatternEntry] = [
+    (name, pattern, severity)
+    for name, pattern, severity in PATTERNS
+    if severity == SEVERITY_HIGH
+]

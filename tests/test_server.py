@@ -53,6 +53,7 @@ class TestFetchTool:
             strict=False,
             js=False,
             links="domains",
+            headers=None,
         )
 
     @patch("fetch_guard.server.pipeline_run")
@@ -85,6 +86,7 @@ class TestFetchTool:
             strict=True,
             js=True,
             links="full",
+            headers=None,
         )
 
     @patch("fetch_guard.server.pipeline_run")

@@ -50,6 +50,7 @@ Issues = "https://github.com/Erodenn/fetch-guard/issues"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["tests"]
 addopts = "-m 'not live'"
 markers = [
     "live: hits real network (excluded by default)",
