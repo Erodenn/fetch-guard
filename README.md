@@ -15,8 +15,8 @@ The core problem is straightforward: LLMs need web content, but raw HTML is nois
 
 Three layers handle the injection defense specifically:
 
-1. **Pre-extraction sanitization** removes hidden elements (`display:none`, `visibility:hidden`, `opacity:0`), elements hidden via CSS class/ID rules in `<style>` tags, off-screen positioned content, `aria-hidden` elements, `<noscript>` tags, and 26 categories of non-printing Unicode characters including bidi isolates and Unicode Tags. This happens before content extraction, so trafilatura never sees the attack vectors.
-2. **Pattern scanning** runs a three-phase scan against the extracted text. Phase one applies 14 compiled regex patterns covering system prompt overrides, ignore-previous instructions, role injection, fake conversation tags, and hidden instruction markers. Phase two normalizes the text via NFKC and confusable-character mapping, then rescans to catch homoglyph bypasses (Cyrillic characters substituted for Latin, etc.). Phase three finds base64 and hex encoded blocks, decodes them, and scans the decoded content with high-severity patterns.
+1. **Pre-extraction sanitization** removes hidden elements (`display:none`, `visibility:hidden`, `opacity:0`, `font-size:0`, `transform:scale(0)`, `clip:rect(0,0,0,0)`, zero-height overflow containers, and elements with matching foreground and background colors), elements hidden via CSS class/ID rules in `<style>` tags, off-screen positioned content, `aria-hidden` elements, `<noscript>` and `<template>` tags, and 26 categories of non-printing Unicode characters including bidi isolates and Unicode Tags. This happens before content extraction, so trafilatura never sees the attack vectors.
+2. **Pattern scanning** runs a four-phase scan against the extracted text and metadata fields. Phase one applies 50 compiled regex patterns covering system prompt overrides, ignore-previous instructions, role injection, fake conversation tags, and hidden instruction markers, in English, Spanish, French, German, Japanese, Simplified Chinese, and Portuguese. Phase two normalizes the text via NFKC and confusable-character mapping, then rescans to catch homoglyph bypasses (Cyrillic or mathematical Unicode characters substituted for Latin, etc.). Phase three finds base64, hex-encoded, and URL percent-encoded blocks, decodes them, and scans against high-severity patterns. Phase four decodes the full document with ROT13 and scans against high-severity patterns. Metadata fields (title, description, og:title, etc.) are scanned independently with matches namespaced to their source field.
 3. **Session-salted output wrapping** generates a random 8-character hex salt per invocation and wraps the body in `<fetch-content-{salt}>` tags. Since the salt is unpredictable, injected content cannot spoof the wrapper boundaries.
 
 ## One Tool
@@ -149,7 +149,7 @@ The pipeline runs a 13-step sequence from URL to structured output:
 
 5. **Content-type routing.** Non-HTML responses get a fast path: JSON is rendered as a fenced code block, RSS/Atom feeds are parsed into structured summaries, CSV becomes a markdown table (capped at 2,000 rows), and plain text passes through directly. Binary content types are rejected.
 
-6. **HTML sanitization.** Strips hidden elements, off-screen positioned content, `aria-hidden` nodes, `<noscript>` tags, and non-printing Unicode. Returns a tally of everything removed.
+6. **HTML sanitization.** Strips hidden elements (including extended CSS visibility techniques, color-matched text, and `<template>` tags), off-screen positioned content, `aria-hidden` nodes, `<noscript>` tags, and non-printing Unicode. Returns a tally of everything removed.
 
 7. **Content extraction.** trafilatura converts sanitized HTML to markdown with link preservation.
 
@@ -157,7 +157,7 @@ The pipeline runs a 13-step sequence from URL to structured output:
 
 9. **Link extraction.** Two modes: `domains` returns a sorted list of unique external domains, `full` returns all external URLs grouped by domain with anchor text.
 
-10. **Injection scanning.** Three-phase scan: original text against all 14 patterns, NFKC-normalized text for homoglyph bypasses, and decode-and-scan for base64/hex encoded payloads. Each match records the pattern name, severity (high/medium), and a 60-character context snippet.
+10. **Injection scanning.** Four-phase scan: original text against all 50 patterns (English + 6 additional languages), NFKC-normalized text for homoglyph bypasses, decode-and-scan for base64/hex/URL-percent-encoded payloads, and ROT13 whole-document scan. Metadata fields are scanned independently with matches namespaced to their source field. Each match records the pattern name, severity (high/medium), and a 60-character context snippet.
 
 11. **Size guard + truncation.** By default, content over 2MB (pre-extraction) or 20KB (post-extraction) raises an error with a suggested `max_words` value. Setting `--max-words` disables both limits and truncates instead — use it when you want explicit control over what reaches the model.
 
@@ -219,10 +219,11 @@ fetch_guard/
 │   └── metadata.py         # JSON-LD, Open Graph, meta tag extraction
 │
 ├── security/               # Injection defense
-│   ├── guard.py            # Salt generation, content wrapping, three-phase pattern scanning
+│   ├── guard.py            # Salt generation, content wrapping, four-phase scan, metadata scan, merge API
 │   ├── normalize.py        # NFKC + confusable-character normalization for homoglyph detection
-│   ├── patterns.py         # 14 compiled regex patterns — single source of truth
-│   └── sanitizer.py        # Hidden element, CSS rule, and non-printing character removal
+│   ├── patterns.py         # 14 English + 36 multilingual compiled regex patterns — single source of truth
+│   ├── multilingual_patterns.json  # Multilingual injection patterns (ES, FR, DE, JA, ZH, PT)
+│   └── sanitizer.py        # Hidden element, CSS rule, color-match, and non-printing character removal
 │
 └── output/                 # Formatting
     └── formatter.py        # CLI output assembly
@@ -233,7 +234,7 @@ Each module is a single-responsibility unit with a public function as its interf
 ## Development
 
 ```bash
-# Run tests (262 unit tests, all mocked — no network calls)
+# Run tests (358 unit tests, all mocked — no network calls)
 pytest
 
 # Run live integration tests (hits real URLs)

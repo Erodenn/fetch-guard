@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "fetch-guard"
-version = "1.1.0"
+version = "1.2.0"
 description = "Fetch URLs and return clean, LLM-ready markdown with metadata and prompt injection defense"
 requires-python = ">=3.10"
 license = "MIT"
