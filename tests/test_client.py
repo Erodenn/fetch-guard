@@ -181,3 +181,46 @@ class TestFetch:
         result = fetch_client.fetch("https://example.com", timeout=5)
 
         assert result["content_type"] is None
+
+    @patch("fetch_guard.http.client.requests.get")
+    def test_custom_headers_merged(self, mock_get):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = "<html></html>"
+        mock_response.url = "https://example.com"
+        mock_response.apparent_encoding = "utf-8"
+        mock_get.return_value = mock_response
+
+        fetch_client.fetch("https://example.com", headers={"Authorization": "Bearer token"})
+
+        _, kwargs = mock_get.call_args
+        assert kwargs["headers"]["Authorization"] == "Bearer token"
+        assert "User-Agent" in kwargs["headers"]
+
+    @patch("fetch_guard.http.client.requests.get")
+    def test_custom_headers_override_defaults(self, mock_get):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = "<html></html>"
+        mock_response.url = "https://example.com"
+        mock_response.apparent_encoding = "utf-8"
+        mock_get.return_value = mock_response
+
+        fetch_client.fetch("https://example.com", headers={"User-Agent": "MyBot/1.0"})
+
+        _, kwargs = mock_get.call_args
+        assert kwargs["headers"]["User-Agent"] == "MyBot/1.0"
+
+    @patch("fetch_guard.http.client.requests.get")
+    def test_no_headers_uses_defaults_only(self, mock_get):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = "<html></html>"
+        mock_response.url = "https://example.com"
+        mock_response.apparent_encoding = "utf-8"
+        mock_get.return_value = mock_response
+
+        fetch_client.fetch("https://example.com")
+
+        _, kwargs = mock_get.call_args
+        assert set(kwargs["headers"].keys()) == {"User-Agent", "Accept"}

@@ -5,7 +5,7 @@ import contextlib
 from .client import error_result
 
 
-def fetch(url, timeout=180):
+def fetch(url, timeout=180, headers=None):
     """Fetch a URL using headless Chromium via Playwright.
 
     Returns the same dict shape as fetch_client.fetch():
@@ -29,7 +29,8 @@ def fetch(url, timeout=180):
     try:
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)
-            page = browser.new_page()
+            context = browser.new_context(extra_http_headers=headers or {})
+            page = context.new_page()
 
             response = page.goto(url, wait_until="domcontentloaded", timeout=timeout_ms)
 
@@ -44,6 +45,7 @@ def fetch(url, timeout=180):
             html = page.content()
             final_url = page.url
 
+            context.close()
             browser.close()
 
             return {

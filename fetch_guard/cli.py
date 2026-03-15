@@ -59,8 +59,19 @@ def main():
         "--js", action="store_true",
         help="Use Playwright for JavaScript-rendered pages (requires playwright + chromium)",
     )
+    parser.add_argument(
+        "--header", action="append", dest="headers", metavar="KEY:VALUE",
+        help="Custom HTTP header (repeatable, e.g. --header Authorization:Bearer token)",
+    )
 
     args = parser.parse_args()
+
+    headers = None
+    if args.headers:
+        headers = {}
+        for h in args.headers:
+            key, _, value = h.partition(":")
+            headers[key.strip()] = value.strip()
 
     # 1. Run the pipeline
     try:
@@ -71,6 +82,7 @@ def main():
             strict=args.strict,
             js=args.js,
             links=args.links,
+            headers=headers,
         )
     except FetchError as e:
         print(f"Fetch error: {e}", file=sys.stderr)

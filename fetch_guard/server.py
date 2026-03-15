@@ -36,6 +36,7 @@ def fetch(
     strict: bool = False,
     js: bool = False,
     links: str = "domains",
+    headers: dict[str, str] | None = None,
 ) -> dict:
     """Fetch a URL and return clean, LLM-ready markdown with metadata and prompt injection scanning.
 
@@ -46,6 +47,7 @@ def fetch(
         strict: When True and high-risk injection is detected, the response is marked as an error.
         js: Use Playwright for JavaScript-rendered pages (requires playwright + chromium).
         links: Link extraction mode — "domains" (default) or "full" for all URLs with anchor text.
+        headers: Custom HTTP headers to include in the request (e.g. {"Authorization": "Bearer token"}).
 
     Returns:
         A structured dict with url, body (markdown), metadata, links, risk_level,
@@ -59,6 +61,7 @@ def fetch(
             strict=strict,
             js=js,
             links=links,
+            headers=headers,
         )
     except FetchError as e:
         raise ValueError(str(e)) from e

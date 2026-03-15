@@ -60,18 +60,21 @@ def _build_edge_cases(edge_result):
 
 
 def _build_status(risk_result, content_type, edge_result, sanitization, js_rendered, retried, truncated_at):
-    """Build the quick-glance status dict shown at the top of the tool result."""
-    sanitized_total = sum(sanitization.values())
+    """Build the quick-glance status string shown at the top of the tool result."""
+    parts = [risk_result["risk"], content_type]
     edge_cases = _build_edge_cases(edge_result)
-    return {
-        "risk": risk_result["risk"],
-        "content_type": content_type,
-        "edge": edge_cases["type"] if edge_cases else None,
-        "sanitized": sanitized_total,
-        "retried": retried,
-        "js": js_rendered,
-        "truncated_at": truncated_at,
-    }
+    if edge_cases:
+        parts.append(f"edge:{edge_cases['type']}")
+    sanitized_total = sum(sanitization.values())
+    if sanitized_total > 0:
+        parts.append(f"sanitized:{sanitized_total}")
+    if retried:
+        parts.append("retried")
+    if js_rendered:
+        parts.append("js")
+    if truncated_at is not None:
+        parts.append(f"truncated:{truncated_at}")
+    return " | ".join(parts)
 
 
 def _build_result(
@@ -94,7 +97,9 @@ def _build_result(
 ):
     """Assemble the final pipeline result dict."""
     return {
-        "status": _build_status(risk_result, content_type, edge_result, sanitization, js_rendered, retried, truncated_at),
+        "status": _build_status(
+            risk_result, content_type, edge_result, sanitization, js_rendered, retried, truncated_at
+        ),
         "url": url,
         "fetched_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "body": body,
@@ -115,7 +120,7 @@ def _build_result(
     }
 
 
-def run(url, timeout=180, max_words=None, strict=False, js=False, links="domains"):
+def run(url, timeout=180, max_words=None, strict=False, js=False, links="domains", headers=None):
     """Execute the fetch pipeline.
 
     Args:
@@ -157,7 +162,7 @@ def run(url, timeout=180, max_words=None, strict=False, js=False, links="domains
             final_url = llms_result["url"]
             content_type = ""
         else:
-            result = fetcher(url, timeout=timeout)
+            result = fetcher(url, timeout=timeout, headers=headers)
             if result["error"]:
                 raise FetchError(result["error"])
             edge_result = detect_edges(result)
@@ -168,7 +173,7 @@ def run(url, timeout=180, max_words=None, strict=False, js=False, links="domains
         # Concurrent: fetch + llms.txt check in parallel
         with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
             llms_future = executor.submit(check_llms_txt, url)
-            fetch_future = executor.submit(fetcher, url, timeout=timeout)
+            fetch_future = executor.submit(fetcher, url, timeout=timeout, headers=headers)
             result = fetch_future.result()
             llms_result = llms_future.result()
 
@@ -191,6 +196,7 @@ def run(url, timeout=180, max_words=None, strict=False, js=False, links="domains
             url,
             timeout=timeout,
             user_agent=BROWSER_USER_AGENT,
+            headers=headers,
         )
         if result["error"]:
             raise FetchError(f"Error on retry: {result['error']}")

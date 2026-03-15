@@ -21,7 +21,7 @@ def error_result(url, error):
     }
 
 
-def fetch(url, timeout=180, user_agent=None):
+def fetch(url, timeout=180, user_agent=None, headers=None):
     """Fetch a URL and return the result.
 
     Returns a dict with:
@@ -34,14 +34,17 @@ def fetch(url, timeout=180, user_agent=None):
     Only connection-level failures set error.
     """
     ua = user_agent or USER_AGENT
+    request_headers = {
+        "User-Agent": ua,
+        "Accept": "text/html,application/xhtml+xml,*/*",
+    }
+    if headers:
+        request_headers.update(headers)
     try:
         response = requests.get(
             url,
             timeout=timeout,
-            headers={
-                "User-Agent": ua,
-                "Accept": "text/html,application/xhtml+xml,*/*",
-            },
+            headers=request_headers,
             allow_redirects=True,
         )
         # Only run charset detection if the server didn't declare one.

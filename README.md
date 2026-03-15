@@ -117,6 +117,7 @@ fetch-guard-cli <url> [options]
 | `--js` | off | Use Playwright for JS-rendered pages |
 | `--strict` | off | Exit code 2 on high-risk injection |
 | `--links MODE` | `domains` | `domains` for unique external domains, `full` for all URLs with anchor text |
+| `--header KEY:VALUE` | none | Custom HTTP header (repeatable) |
 
 ## Tool Parameters
 
@@ -130,6 +131,7 @@ The MCP `fetch` tool accepts these parameters:
 | `strict` | boolean | false | When true and high-risk injection is detected, the response is marked as an error |
 | `js` | boolean | false | Use Playwright for JavaScript-rendered pages (requires `fetch-guard[js]`) |
 | `links` | string | `"domains"` | `"domains"` for unique external domains, `"full"` for all URLs with anchor text |
+| `headers` | object | none | Custom HTTP headers as a key-value dict (e.g. `{"Authorization": "Bearer token"}`). Useful for GitHub's authenticated API and other endpoints requiring auth |
 
 ### Claude Code Skill
 
@@ -188,19 +190,14 @@ llms_txt_available, llms_txt_replaced, js_rendered, js_hint,
 retried, truncated_at
 ```
 
-`status` is a quick-glance summary dict designed to be readable without expanding the full result:
+`status` is a quick-glance summary string designed to be readable without expanding the full result:
 
-```json
-{
-  "risk": "OK",
-  "content_type": "html",
-  "edge": null,
-  "sanitized": 193,
-  "retried": false,
-  "js": false,
-  "truncated_at": null
-}
 ```
+"OK | html"
+"HIGH | html | edge:paywall | sanitized:193 | retried | truncated:500"
+```
+
+Always includes `risk` and `content_type`. Non-default values (`edge`, `sanitized > 0`, `retried`, `js`, `truncated`) are appended only when present.
 
 When `--strict` is set and the risk level is `HIGH`, the CLI exits with code 2 and the MCP server raises an error response. The full result is still available in both cases.
 
