@@ -57,7 +57,13 @@ PATTERNS = [
     ),
     (
         "act_as_if",
-        re.compile(r"act\s+as\s+(?:if|though|a|an)\b", re.IGNORECASE),
+        re.compile(
+            r"act\s+as\s+(?:"
+            r"(?:if|though)\b"
+            r"|(?:(?:a|an)\s+)?(?:assistant|ai|model|system|bot|llm|chatbot|gpt|claude|character|persona|agent|dan)\b"
+            r")",
+            re.IGNORECASE,
+        ),
         "medium",
     ),
     (

@@ -1,7 +1,7 @@
 ---
 name: fetch-guard
 description: LLM-ready web fetching — extracts clean markdown and metadata from URLs with prompt injection defense
-version: 0.9.0
+version: 1.1.0
 location: user
 license: MIT
 ---
@@ -21,7 +21,7 @@ If the `fetch-guard` MCP server is configured, use the `fetch` tool directly.
 ### CLI
 
 ```bash
-fetch-guard-cli <url> [options]
+fetch-guard <url> [options]
 ```
 
 ### Options
@@ -29,7 +29,7 @@ fetch-guard-cli <url> [options]
 | Flag | Default | Description |
 |---|---|---|
 | `--timeout N` | 180 | Request timeout in seconds (use ~30 for most agent workflows) |
-| `--max-words N` | _(none)_ | Optional word cap on extracted body content |
+| `--max-words N` | _(none)_ | Word cap on extracted body content. Also disables the automatic size guard |
 | `--js` | _(off)_ | Route through Playwright for JS-rendered pages |
 | `--strict` | _(off)_ | Exit code 2 on high-risk injection detection |
 | `--links MODE` | `domains` | Link extraction: `domains` (unique external domains) or `full` (all URLs grouped by domain with anchor text) |
@@ -80,5 +80,5 @@ When static extraction returns no content (and `--js` was not used), the output 
 - Does not render JavaScript by default — use `--js` to opt in
 - `--js` requires `playwright` and Chromium (`pip install playwright && playwright install chromium`)
 - Does not cache or store fetched content
-- Does not truncate to fit context windows — caller's responsibility
+- Has automatic size limits: 2MB pre-extraction, 20KB post-extraction. Both are disabled when `--max-words` is set — use it when you need explicit control over what reaches the model
 - Checks for `/llms.txt` at the domain root before full fetch; uses it if available

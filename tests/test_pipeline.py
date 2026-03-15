@@ -673,3 +673,162 @@ class TestContentTypeRouting:
         assert result["content_type"] == "xml"
         assert "# Feed" in result["body"]
         assert "[Post](https://example.com/1)" in result["body"]
+
+
+# ---------------------------------------------------------------------------
+# Auto size guard
+# ---------------------------------------------------------------------------
+
+_2MB_STR = "x" * (2 * 1024 * 1024 + 1)
+_21KB_STR = "word " * (21 * 1024 // 5 + 1)  # ~21KB of words
+
+
+class TestSizeGuard:
+    """Tests for automatic pre- and post-extraction size limits."""
+
+    # --- Pre-extraction: HTML path ---
+
+    @patch("fetch_guard.pipeline.check_llms_txt")
+    @patch("fetch_guard.pipeline.is_root_url")
+    @patch("fetch_guard.pipeline.detect_edges")
+    @patch("fetch_guard.pipeline.static_fetch")
+    def test_pre_extraction_html_too_large_raises(
+        self, mock_static_fetch, mock_detect_edges, mock_is_root, mock_check_llms,
+    ):
+        mock_check_llms.return_value = _mock_llms_result()
+        mock_is_root.return_value = False
+        mock_static_fetch.return_value = _mock_fetch_result(html=_2MB_STR)
+        mock_detect_edges.return_value = _mock_edge_result()
+
+        with pytest.raises(FetchError, match="Raw content too large"):
+            run("https://example.com")
+
+    # --- Pre-extraction: non-HTML path ---
+
+    @patch("fetch_guard.pipeline.check_llms_txt")
+    @patch("fetch_guard.pipeline.is_root_url")
+    @patch("fetch_guard.pipeline.detect_edges")
+    @patch("fetch_guard.pipeline.static_fetch")
+    def test_pre_extraction_non_html_too_large_raises(
+        self, mock_static_fetch, mock_detect_edges, mock_is_root, mock_check_llms,
+    ):
+        mock_check_llms.return_value = _mock_llms_result()
+        mock_is_root.return_value = False
+        mock_static_fetch.return_value = _mock_fetch_result(
+            html=_2MB_STR, content_type="text/plain",
+        )
+        mock_detect_edges.return_value = _mock_edge_result()
+
+        with pytest.raises(FetchError, match="Raw content too large"):
+            run("https://example.com/file.txt")
+
+    # --- Post-extraction: non-HTML path ---
+
+    @patch("fetch_guard.pipeline.check_llms_txt")
+    @patch("fetch_guard.pipeline.is_root_url")
+    @patch("fetch_guard.pipeline.detect_edges")
+    @patch("fetch_guard.pipeline.static_fetch")
+    @patch("fetch_guard.pipeline.scan")
+    def test_post_extraction_non_html_too_large_raises(
+        self, mock_scan, mock_static_fetch, mock_detect_edges,
+        mock_is_root, mock_check_llms,
+    ):
+        mock_check_llms.return_value = _mock_llms_result()
+        mock_is_root.return_value = False
+        mock_static_fetch.return_value = _mock_fetch_result(
+            html=_21KB_STR, content_type="text/plain",
+        )
+        mock_detect_edges.return_value = _mock_edge_result()
+        mock_scan.return_value = _OK_SCAN
+
+        with pytest.raises(FetchError, match="Extracted content too large"):
+            run("https://example.com/file.txt")
+
+    # --- Post-extraction: HTML path ---
+
+    @patch("fetch_guard.pipeline.check_llms_txt")
+    @patch("fetch_guard.pipeline.is_root_url")
+    @patch("fetch_guard.pipeline.detect_edges")
+    @patch("fetch_guard.pipeline.static_fetch")
+    @patch("fetch_guard.pipeline.extract_content")
+    @patch("fetch_guard.pipeline.sanitize")
+    @patch("fetch_guard.pipeline.extract_metadata")
+    @patch("fetch_guard.pipeline.extract_domains")
+    @patch("fetch_guard.pipeline.scan")
+    def test_post_extraction_html_too_large_raises(
+        self, mock_scan, mock_extract_domains, mock_extract_meta,
+        mock_sanitize, mock_extract_content, mock_static_fetch,
+        mock_detect_edges, mock_is_root, mock_check_llms,
+    ):
+        mock_check_llms.return_value = _mock_llms_result()
+        mock_is_root.return_value = False
+        mock_static_fetch.return_value = _mock_fetch_result()
+        mock_detect_edges.return_value = _mock_edge_result()
+        mock_sanitize.return_value = ("<p>content</p>", None, _zero_tally())
+        mock_extract_content.return_value = _21KB_STR
+        mock_extract_meta.return_value = _null_meta()
+        mock_extract_domains.return_value = []
+        mock_scan.return_value = _OK_SCAN
+
+        with pytest.raises(FetchError, match="Extracted content too large"):
+            run("https://example.com")
+
+    # --- max_words bypasses pre-extraction guard ---
+
+    @patch("fetch_guard.pipeline.check_llms_txt")
+    @patch("fetch_guard.pipeline.is_root_url")
+    @patch("fetch_guard.pipeline.detect_edges")
+    @patch("fetch_guard.pipeline.static_fetch")
+    @patch("fetch_guard.pipeline.extract_content")
+    @patch("fetch_guard.pipeline.sanitize")
+    @patch("fetch_guard.pipeline.extract_metadata")
+    @patch("fetch_guard.pipeline.extract_domains")
+    @patch("fetch_guard.pipeline.scan")
+    def test_max_words_bypasses_pre_extraction_guard(
+        self, mock_scan, mock_extract_domains, mock_extract_meta,
+        mock_sanitize, mock_extract_content, mock_static_fetch,
+        mock_detect_edges, mock_is_root, mock_check_llms,
+    ):
+        mock_check_llms.return_value = _mock_llms_result()
+        mock_is_root.return_value = False
+        mock_static_fetch.return_value = _mock_fetch_result(html=_2MB_STR)
+        mock_detect_edges.return_value = _mock_edge_result()
+        mock_sanitize.return_value = ("<p>hello</p>", None, _zero_tally())
+        mock_extract_content.return_value = "hello"
+        mock_extract_meta.return_value = _null_meta()
+        mock_extract_domains.return_value = []
+        mock_scan.return_value = _OK_SCAN
+
+        # Should not raise despite >2MB raw content
+        result = run("https://example.com", max_words=10)
+        assert result["body"] == "hello"
+
+    # --- max_words bypasses post-extraction guard ---
+
+    @patch("fetch_guard.pipeline.check_llms_txt")
+    @patch("fetch_guard.pipeline.is_root_url")
+    @patch("fetch_guard.pipeline.detect_edges")
+    @patch("fetch_guard.pipeline.static_fetch")
+    @patch("fetch_guard.pipeline.extract_content")
+    @patch("fetch_guard.pipeline.sanitize")
+    @patch("fetch_guard.pipeline.extract_metadata")
+    @patch("fetch_guard.pipeline.extract_domains")
+    @patch("fetch_guard.pipeline.scan")
+    def test_max_words_bypasses_post_extraction_guard(
+        self, mock_scan, mock_extract_domains, mock_extract_meta,
+        mock_sanitize, mock_extract_content, mock_static_fetch,
+        mock_detect_edges, mock_is_root, mock_check_llms,
+    ):
+        mock_check_llms.return_value = _mock_llms_result()
+        mock_is_root.return_value = False
+        mock_static_fetch.return_value = _mock_fetch_result()
+        mock_detect_edges.return_value = _mock_edge_result()
+        mock_sanitize.return_value = ("<p>content</p>", None, _zero_tally())
+        mock_extract_content.return_value = _21KB_STR
+        mock_extract_meta.return_value = _null_meta()
+        mock_extract_domains.return_value = []
+        mock_scan.return_value = _OK_SCAN
+
+        # Should not raise despite >20KB extracted content
+        result = run("https://example.com", max_words=5)
+        assert result["truncated_at"] == 5

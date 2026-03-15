@@ -113,7 +113,7 @@ fetch-guard-cli <url> [options]
 | Flag | Default | Description |
 |---|---|---|
 | `--timeout N` | 180 | Request timeout in seconds |
-| `--max-words N` | none | Word cap on extracted body content |
+| `--max-words N` | none | Word cap on extracted body content. Also disables the automatic size guard |
 | `--js` | off | Use Playwright for JS-rendered pages |
 | `--strict` | off | Exit code 2 on high-risk injection |
 | `--links MODE` | `domains` | `domains` for unique external domains, `full` for all URLs with anchor text |
@@ -126,7 +126,7 @@ The MCP `fetch` tool accepts these parameters:
 |-----------|------|---------|-------------|
 | `url` | string | required | The URL to fetch |
 | `timeout` | integer | 180 | Request timeout in seconds. Ensures the tool always returns — no hanging fetches |
-| `max_words` | integer | none | Word cap on extracted body content |
+| `max_words` | integer | none | Word cap on extracted body content. Also disables the automatic size guard — use when you want explicit control over truncation without hitting the default limits |
 | `strict` | boolean | false | When true and high-risk injection is detected, the response is marked as an error |
 | `js` | boolean | false | Use Playwright for JavaScript-rendered pages (requires `fetch-guard[js]`) |
 | `links` | string | `"domains"` | `"domains"` for unique external domains, `"full"` for all URLs with anchor text |
@@ -159,7 +159,7 @@ The pipeline runs a 13-step sequence from URL to structured output:
 
 10. **Injection scanning.** Three-phase scan: original text against all 14 patterns, NFKC-normalized text for homoglyph bypasses, and decode-and-scan for base64/hex encoded payloads. Each match records the pattern name, severity (high/medium), and a 60-character context snippet.
 
-11. **Truncation.** If `--max-words` is set, the body is truncated after extraction but before output wrapping.
+11. **Size guard + truncation.** By default, content over 2MB (pre-extraction) or 20KB (post-extraction) raises an error with a suggested `max_words` value. Setting `--max-words` disables both limits and truncates instead — use it when you want explicit control over what reaches the model.
 
 12. **Salt wrapping.** The body gets wrapped in session-salted tags for defense-in-depth.
 
@@ -233,7 +233,7 @@ Each module is a single-responsibility unit with a public function as its interf
 ## Development
 
 ```bash
-# Run tests (239 unit tests, all mocked — no network calls)
+# Run tests (262 unit tests, all mocked — no network calls)
 pytest
 
 # Run live integration tests (hits real URLs)

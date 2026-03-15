@@ -31,6 +31,9 @@ from .security import sanitize, scan
 
 _ZERO_TALLY = {"hidden_elements": 0, "offscreen_elements": 0, "nonprinting_chars": 0}
 
+_MAX_RAW_BYTES = 2 * 1024 * 1024   # 2MB  — pre-extraction sanity guard
+_MAX_EXTRACTED_BYTES = 20 * 1024    # 20KB — post-extraction LLM context guard
+
 
 class FetchError(Exception):
     """Raised when the fetch pipeline encounters a non-recoverable error."""
@@ -180,6 +183,15 @@ def run(url, timeout=180, max_words=None, strict=False, js=False, links="domains
         final_url = result["final_url"]
         content_type = result.get("content_type", "")
 
+    # Size guard — pre-extraction
+    if max_words is None:
+        raw_size = len(raw_html.encode("utf-8"))
+        if raw_size > _MAX_RAW_BYTES:
+            raise FetchError(
+                f"Raw content too large: {raw_size // 1024}KB (limit: {_MAX_RAW_BYTES // 1024}KB). "
+                f"Pass max_words to disable the size guard and fetch with explicit truncation."
+            )
+
     # 5. Content-type routing — non-HTML gets its own fast path
     if not llms_txt_replaced:
         content_class = classify_content_type(
@@ -197,6 +209,15 @@ def run(url, timeout=180, max_words=None, strict=False, js=False, links="domains
 
         markdown = handle_content_type(content_class, raw_html)
         risk_result = scan(markdown)
+        if max_words is None:
+            extracted_size = len(markdown.encode("utf-8"))
+            if extracted_size > _MAX_EXTRACTED_BYTES:
+                word_count = len(markdown.split())
+                raise FetchError(
+                    f"Extracted content too large: {extracted_size // 1024}KB (~{word_count:,} words, "
+                    f"limit: {_MAX_EXTRACTED_BYTES // 1024}KB). "
+                    f"Pass max_words={word_count} to disable the size guard, or a lower value to truncate."
+                )
         markdown, truncated_at = _truncate(markdown, max_words)
 
         return _build_result(
@@ -251,6 +272,17 @@ def run(url, timeout=180, max_words=None, strict=False, js=False, links="domains
 
     # 11. Scan for injection
     risk_result = scan(markdown)
+
+    # Size guard — post-extraction (HTML path)
+    if max_words is None:
+        extracted_size = len(markdown.encode("utf-8"))
+        if extracted_size > _MAX_EXTRACTED_BYTES:
+            word_count = len(markdown.split())
+            raise FetchError(
+                f"Extracted content too large: {extracted_size // 1024}KB (~{word_count:,} words, "
+                f"limit: {_MAX_EXTRACTED_BYTES // 1024}KB). "
+                f"Pass max_words={word_count} to disable the size guard, or a lower value to truncate."
+            )
 
     # 12. Truncate
     markdown, truncated_at = _truncate(markdown, max_words)
