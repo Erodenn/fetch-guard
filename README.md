@@ -23,6 +23,38 @@ Three layers handle the injection defense specifically:
 
 This is a single-tool MCP server. It exposes one tool — `fetch` — that runs a full extraction pipeline behind a consistent interface. No tool selection, no routing, no multi-step workflows. One URL in, one structured result out, configurable via parameters.
 
+## Testing
+
+The test suite has two tiers.
+
+**Unit tests** (424, all mocked — no network calls):
+
+```bash
+pytest
+```
+
+Every module has a corresponding test file. Tests are fully parametrized tables with explicit input/output pairs — no shared mutable state, no network, no filesystem side effects. CI runs the full suite on Python 3.10, 3.12, and 3.13 on every push and PR.
+
+**Live integration tests** (54 entries, real network):
+
+```bash
+pytest -m live -v
+```
+
+Rather than hardcoded test functions, the live suite is data-driven: five YAML catalogs in `tests/catalogs/` define URL entries with typed assertions. A single parametrized runner (`test_catalog.py`) evaluates all of them.
+
+| Catalog | Entries | What it covers |
+|---|---|---|
+| `html.yaml` | 13 | Metadata-rich pages, non-English content, redirects, government/academic sites |
+| `injection.yaml` | 9 | OWASP cheat sheets, arXiv papers, controlled high-severity payload gist |
+| `edge_cases.yaml` | 10 | Login walls (GitHub, Reddit, Steam), bot blocks (LinkedIn, Glassdoor, WSJ) |
+| `content_types.yaml` | 12 | RSS/Atom feeds, GitHub API JSON, raw text files, XML sitemaps |
+| `llms_txt.yaml` | 11 | Domains with `/llms.txt` (replaced vs. available), confirmed negatives |
+
+Each entry can assert `min_body_length`, `injection_match_count_min`, `links_count_min`, `url_changed`, and exact field equality via dot-notation (e.g. `edge_cases.type: login_wall`). Entries can set `allow_fetch_error: true` for inherently flaky sources (bot-blocking sites) and `max_words` to bypass the size guard for large pages.
+
+Live tests run automatically on release via a separate `live-tests.yml` workflow.
+
 ## Quick Start
 
 ### Prerequisites
