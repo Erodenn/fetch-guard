@@ -147,6 +147,172 @@ class TestSanitize:
         assert "three" in cleaned
         assert tally["hidden_elements"] >= 2
 
+    def test_removes_font_size_zero(self):
+        html = '<div style="font-size: 0">inject</div><p>visible</p>'
+        cleaned, _soup, tally = html_sanitizer.sanitize(html)
+        assert "inject" not in cleaned
+        assert "visible" in cleaned
+        assert tally["hidden_elements"] >= 1
+
+    def test_removes_color_transparent(self):
+        html = '<span style="color: transparent">inject</span><p>ok</p>'
+        cleaned, _soup, tally = html_sanitizer.sanitize(html)
+        assert "inject" not in cleaned
+        assert tally["hidden_elements"] >= 1
+
+    def test_removes_color_rgba_zero_alpha(self):
+        html = '<span style="color: rgba(0,0,0,0)">inject</span><p>ok</p>'
+        cleaned, _soup, tally = html_sanitizer.sanitize(html)
+        assert "inject" not in cleaned
+        assert tally["hidden_elements"] >= 1
+
+    def test_removes_height_zero_overflow_hidden(self):
+        html = '<div style="height: 0; overflow: hidden">inject</div><p>ok</p>'
+        cleaned, _soup, tally = html_sanitizer.sanitize(html)
+        assert "inject" not in cleaned
+        assert tally["hidden_elements"] >= 1
+
+    def test_removes_clip_rect_zero(self):
+        html = '<div style="clip: rect(0,0,0,0)">inject</div><p>ok</p>'
+        cleaned, _soup, tally = html_sanitizer.sanitize(html)
+        assert "inject" not in cleaned
+        assert tally["hidden_elements"] >= 1
+
+    def test_removes_transform_scale_zero(self):
+        html = '<div style="transform: scale(0)">inject</div><p>ok</p>'
+        cleaned, _soup, tally = html_sanitizer.sanitize(html)
+        assert "inject" not in cleaned
+        assert tally["hidden_elements"] >= 1
+
+    def test_removes_template_tag(self):
+        html = "<template>hidden template content</template><p>visible</p>"
+        cleaned, _soup, tally = html_sanitizer.sanitize(html)
+        assert "hidden template content" not in cleaned
+        assert "visible" in cleaned
+        assert tally["hidden_elements"] >= 1
+
+    def test_css_font_size_zero_class(self):
+        html = """
+        <html><head><style>.hidden { font-size: 0; }</style></head>
+        <body><div class="hidden">inject via class</div><p>content</p></body></html>
+        """
+        cleaned, _soup, tally = html_sanitizer.sanitize(html)
+        assert "inject via class" not in cleaned
+        assert "content" in cleaned
+        assert tally["hidden_elements"] >= 1
+
+
+class TestColorMatchDetection:
+    """Tests for color-match hidden text detection in sanitize()."""
+
+    def _make_html(self, style):
+        return f'<p style="{style}">inject</p><p>visible</p>'
+
+    def test_hex_hex_exact_match_removed(self):
+        cleaned, _soup, tally = html_sanitizer.sanitize(
+            self._make_html("color:#ffffff;background-color:#ffffff")
+        )
+        assert "inject" not in cleaned
+        assert tally["hidden_elements"] >= 1
+
+    def test_name_name_exact_match_removed(self):
+        cleaned, _soup, tally = html_sanitizer.sanitize(
+            self._make_html("color:white;background-color:white")
+        )
+        assert "inject" not in cleaned
+        assert tally["hidden_elements"] >= 1
+
+    def test_rgb_rgb_match_removed(self):
+        cleaned, _soup, tally = html_sanitizer.sanitize(
+            self._make_html("color:rgb(0,0,0);background-color:rgb(0,0,0)")
+        )
+        assert "inject" not in cleaned
+        assert tally["hidden_elements"] >= 1
+
+    def test_rgba_hex_cross_format_removed(self):
+        cleaned, _soup, tally = html_sanitizer.sanitize(
+            self._make_html("color:rgba(255,255,255,0.5);background-color:#ffffff")
+        )
+        assert "inject" not in cleaned
+        assert tally["hidden_elements"] >= 1
+
+    def test_hex_named_cross_format_removed(self):
+        cleaned, _soup, tally = html_sanitizer.sanitize(
+            self._make_html("color:#000000;background-color:black")
+        )
+        assert "inject" not in cleaned
+        assert tally["hidden_elements"] >= 1
+
+    def test_3digit_6digit_hex_removed(self):
+        cleaned, _soup, tally = html_sanitizer.sanitize(
+            self._make_html("color:#fff;background-color:#ffffff")
+        )
+        assert "inject" not in cleaned
+        assert tally["hidden_elements"] >= 1
+
+    def test_8digit_hex_alpha_kept(self):
+        # 8-digit hex with non-zero alpha (50%) — not caught by transparency pattern,
+        # and color-match detection skips it (alpha channel present)
+        cleaned, _soup, tally = html_sanitizer.sanitize(
+            self._make_html("color:#ffffff80;background-color:#ffffff")
+        )
+        assert "inject" in cleaned
+
+    def test_different_colors_kept(self):
+        cleaned, _soup, tally = html_sanitizer.sanitize(
+            self._make_html("color:#000000;background-color:#ffffff")
+        )
+        assert "inject" in cleaned
+
+    def test_only_color_no_bg_kept(self):
+        cleaned, _soup, tally = html_sanitizer.sanitize(
+            self._make_html("color:white")
+        )
+        assert "inject" in cleaned
+
+    def test_unrecognized_named_color_kept(self):
+        # "thistle" is not in the curated named color table
+        cleaned, _soup, tally = html_sanitizer.sanitize(
+            self._make_html("color:thistle;background-color:thistle")
+        )
+        assert "inject" in cleaned
+
+    def test_bg_color_before_color_removed(self):
+        # Property order should not matter
+        cleaned, _soup, tally = html_sanitizer.sanitize(
+            self._make_html("background-color:white;color:white")
+        )
+        assert "inject" not in cleaned
+        assert tally["hidden_elements"] >= 1
+
+    def test_tally_increments_hidden_elements(self):
+        _cleaned, _soup, tally = html_sanitizer.sanitize(
+            self._make_html("color:#ff0000;background-color:#ff0000")
+        )
+        assert tally["hidden_elements"] >= 1
+
+    def test_display_none_takes_priority(self):
+        # HIDDEN_STYLE_PATTERNS hit first; color-match branch is not reached
+        cleaned, _soup, tally = html_sanitizer.sanitize(
+            self._make_html("display:none;color:white;background-color:white")
+        )
+        assert "inject" not in cleaned
+        assert tally["hidden_elements"] >= 1
+
+    def test_spaces_in_values_removed(self):
+        cleaned, _soup, tally = html_sanitizer.sanitize(
+            self._make_html("color: white ; background-color: white")
+        )
+        assert "inject" not in cleaned
+        assert tally["hidden_elements"] >= 1
+
+    def test_black_hex_named_cross_format_removed(self):
+        cleaned, _soup, tally = html_sanitizer.sanitize(
+            self._make_html("color:black;background-color:#000000")
+        )
+        assert "inject" not in cleaned
+        assert tally["hidden_elements"] >= 1
+
 
 class TestStripNonprinting:
     """Tests for html_sanitizer._strip_nonprinting()."""
