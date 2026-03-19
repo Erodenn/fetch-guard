@@ -1,5 +1,6 @@
 """Tests for MCP server module."""
 
+import warnings
 from unittest.mock import patch
 
 import pytest
@@ -58,6 +59,34 @@ class TestFetchTool:
             links="full",
             headers=None,
         )
+
+    @patch("fetch_guard.server.pipeline_run")
+    def test_auth_token_builds_authorization_header(self, mock_run):
+        mock_run.return_value = _build_pipeline_result()
+
+        server.fetch("https://example.com", auth_token="my-secret-token")
+
+        mock_run.assert_called_once_with(
+            url="https://example.com",
+            timeout=180,
+            max_words=None,
+            strict=False,
+            js=False,
+            links="domains",
+            headers={"Authorization": "Bearer my-secret-token"},
+        )
+
+    @patch("fetch_guard.server.pipeline_run")
+    def test_headers_deprecated_warning(self, mock_run):
+        mock_run.return_value = _build_pipeline_result()
+
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            server.fetch("https://example.com", headers={"X-Custom": "value"})
+
+        assert len(caught) == 1
+        assert issubclass(caught[0].category, DeprecationWarning)
+        assert "auth_token" in str(caught[0].message)
 
     @patch("fetch_guard.server.pipeline_run")
     def test_fetch_error_raises_value_error(self, mock_run):

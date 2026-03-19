@@ -130,8 +130,9 @@ The MCP `fetch` tool accepts these parameters:
 | `max_words` | integer | none | Word cap on extracted body content. Also disables the automatic size guard — use when you want explicit control over truncation without hitting the default limits |
 | `strict` | boolean | false | When true and high-risk injection is detected, the response is marked as an error |
 | `js` | boolean | false | Use Playwright for JavaScript-rendered pages (requires `fetch-guard[js]`) |
-| `links` | string | `"domains"` | `"domains"` for unique external domains, `"full"` for all URLs with anchor text |
-| `headers` | object | none | Custom HTTP headers as a key-value dict (e.g. `{"Authorization": "Bearer token"}`). Useful for GitHub's authenticated API and other endpoints requiring auth |
+| `links` | `"domains"` \| `"full"` | `"domains"` | `"domains"` for unique external domains, `"full"` for all URLs with anchor text |
+| `auth_token` | string | none | Bearer token for the `Authorization` header (e.g. `"my-api-key"`). Use for GitHub's authenticated API and other endpoints requiring auth |
+| `headers` | object | none | **Deprecated.** Use `auth_token` instead. Will be removed in the next release |
 
 ### Claude Code Skill
 

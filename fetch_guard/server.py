@@ -15,6 +15,9 @@ check_deps(extra={"mcp": "mcp"})
 # Imports (after dependency check)
 # ---------------------------------------------------------------------------
 
+import warnings
+from typing import Literal
+
 from mcp.server.fastmcp import FastMCP
 
 from .pipeline import FetchError
@@ -35,7 +38,8 @@ def fetch(
     max_words: int | None = None,
     strict: bool = False,
     js: bool = False,
-    links: str = "domains",
+    links: Literal["domains", "full"] = "domains",
+    auth_token: str | None = None,
     headers: dict[str, str] | None = None,
 ) -> dict:
     """Fetch a URL and return clean, LLM-ready markdown with metadata and prompt injection scanning.
@@ -47,12 +51,25 @@ def fetch(
         strict: When True and high-risk injection is detected, the response is marked as an error.
         js: Use Playwright for JavaScript-rendered pages (requires playwright + chromium).
         links: Link extraction mode — "domains" (default) or "full" for all URLs with anchor text.
-        headers: Custom HTTP headers to include in the request (e.g. {"Authorization": "Bearer token"}).
+        auth_token: Bearer token for Authorization header (e.g. "my-api-key").
+        headers: Deprecated. Use auth_token instead. Custom HTTP headers to include in the request.
 
     Returns:
         A structured dict with url, body (markdown), metadata, links, risk_level,
         injection_matches, sanitization stats, and edge case info.
     """
+    if headers is not None:
+        warnings.warn(
+            "The 'headers' parameter is deprecated and will be removed in the next release. "
+            "Use 'auth_token' instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
+    resolved_headers: dict[str, str] | None = headers
+    if auth_token is not None:
+        resolved_headers = {**(resolved_headers or {}), "Authorization": f"Bearer {auth_token}"}
+
     try:
         result = pipeline_run(
             url=url,
@@ -61,7 +78,7 @@ def fetch(
             strict=strict,
             js=js,
             links=links,
-            headers=headers,
+            headers=resolved_headers,
         )
     except FetchError as e:
         raise ValueError(str(e)) from e
