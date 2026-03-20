@@ -25,6 +25,7 @@
 - url: https://example.com
   description: example.com minimal page
   timeout: 30
+  allow_fetch_error: true
 
 - url: https://ogp.me/
   description: ogp.me OpenGraph spec

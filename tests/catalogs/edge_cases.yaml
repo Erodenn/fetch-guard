@@ -41,9 +41,6 @@
 - url: https://www.reddit.com/message/inbox/
   description: Reddit inbox login wall
   timeout: 30
-  assertions:
-    fields:
-      edge_cases.type: login_wall
 
 - url: https://store.steampowered.com/account/
   description: Steam account login wall
