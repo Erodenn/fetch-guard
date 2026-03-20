@@ -64,7 +64,7 @@ class TestFetchTool:
     def test_auth_token_builds_authorization_header(self, mock_run):
         mock_run.return_value = _build_pipeline_result()
 
-        server.fetch("https://example.com", auth_token="my-secret-token")
+        server.fetch("https://example.com", auth_token="my-secret-token")  # noqa: S106
 
         mock_run.assert_called_once_with(
             url="https://example.com",
