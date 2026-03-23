@@ -1,6 +1,7 @@
 # Fetch Guard
 
 [![PyPI](https://img.shields.io/pypi/v/fetch-guard)](https://pypi.org/project/fetch-guard/)
+[![Downloads](https://static.pepy.tech/badge/fetch-guard)](https://pepy.tech/project/fetch-guard)
 [![CI](https://github.com/Erodenn/fetch-guard/actions/workflows/ci.yml/badge.svg)](https://github.com/Erodenn/fetch-guard/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/pypi/pyversions/fetch-guard)](https://pypi.org/project/fetch-guard/)
 [![License: MIT](https://badgen.net/github/license/Erodenn/fetch-guard)](LICENSE)
