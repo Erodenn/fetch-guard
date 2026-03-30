@@ -120,6 +120,10 @@ fetch-guard-cli <url> [options]
 | `--links MODE` | `domains` | `domains` for unique external domains, `full` for all URLs with anchor text |
 | `--header KEY:VALUE` | none | Custom HTTP header (repeatable) |
 
+## Hosted deployment
+
+A hosted deployment is available on [Fronteir AI](https://fronteir.ai/mcp/erodenn-fetch-guard).
+
 ## Tool Parameters
 
 The MCP `fetch` tool accepts these parameters:
