@@ -217,7 +217,7 @@ When `--strict` is set and the risk level is `HIGH`, the CLI exits with code 2 a
 fetch_guard/
 ├── pipeline.py             # Core orchestration — 13-step sequence, shared by CLI and server
 ├── cli.py                  # CLI entry point — arg parsing, pipeline call, output
-├── server.py               # MCP server — FastMCP wrapper over the same pipeline
+├── server.py               # MCP server — MCPServer wrapper over the same pipeline
 │
 ├── http/                   # HTTP fetching layer
 │   ├── client.py           # Static HTTP fetch via requests

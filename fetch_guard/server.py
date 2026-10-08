@@ -1,6 +1,6 @@
 """MCP server wrapper for the fetch pipeline.
 
-Exposes the fetch pipeline as an MCP tool via FastMCP (stdio transport).
+Exposes the fetch pipeline as an MCP tool via MCPServer (stdio transport).
 
 Usage:
     python server.py              # direct
@@ -18,7 +18,8 @@ check_deps(extra={"mcp": "mcp"})
 import warnings
 from typing import Literal
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
+from mcp.server.mcpserver.exceptions import ToolError
 
 from .pipeline import FetchError
 from .pipeline import run as pipeline_run
@@ -28,7 +29,7 @@ from .security import guard as injection_guard
 # Server
 # ---------------------------------------------------------------------------
 
-mcp = FastMCP("fetch-guard", json_response=True)
+mcp = MCPServer("fetch-guard")
 
 
 @mcp.tool()
@@ -81,17 +82,18 @@ def fetch(
             headers=resolved_headers,
         )
     except FetchError as e:
-        raise ValueError(str(e)) from e
+        raise ToolError(str(e)) from e
 
     # Salt-wrap the body for defense-in-depth — even in structured JSON,
     # the body may be interpolated into a prompt by the consuming client.
     salt = injection_guard.generate_salt()
     result["body"] = injection_guard.wrap_content(result["body"], salt)
 
-    # For strict mode + HIGH risk, raise so FastMCP marks the response as an error.
-    # The caller still gets the full result in the error message.
+    # For strict mode + HIGH risk, raise so MCPServer marks the response as an error.
+    # Only ToolError messages reach the client; any other exception is reported as a
+    # crash with its text withheld.
     if strict and result["risk_level"] == injection_guard.RISK_HIGH:
-        raise ValueError(
+        raise ToolError(
             f"High-risk prompt injection detected ({len(result['injection_matches'])} matches). "
             f"URL: {result['url']}"
         )

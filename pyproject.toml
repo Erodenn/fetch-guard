@@ -29,7 +29,7 @@ dependencies = [
     "beautifulsoup4",
     "trafilatura",
     "extruct",
-    "mcp",
+    "mcp>=2,<3",
 ]
 
 [project.scripts]
