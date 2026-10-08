@@ -5,6 +5,11 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # Dependencies are resolved fresh on every install, so an upstream release can
+  # break the published package without any commit here.
+  schedule:
+    - cron: "0 12 * * 1"
+  workflow_dispatch:
 
 jobs:
   test:
