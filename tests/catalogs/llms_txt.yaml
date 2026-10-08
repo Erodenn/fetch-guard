@@ -7,11 +7,13 @@
       llms_txt_replaced: false
 
 - url: https://docs.anthropic.com
-  description: docs.anthropic.com — llms.txt removed
+  description: docs.anthropic.com root — llms.txt replaces body
   timeout: 30
+  max_words: 50000
   assertions:
     fields:
-      llms_txt_available: false
+      llms_txt_available: true
+      llms_txt_replaced: true
 
 - url: https://owensterling.com
   description: owensterling.com root — llms.txt replaces body

@@ -16,6 +16,7 @@
 - url: https://cheatsheetseries.owasp.org/cheatsheets/LLM_Prompt_Injection_Prevention_Cheat_Sheet.html
   description: OWASP LLM prompt injection prevention cheat sheet
   timeout: 30
+  max_words: 5000
   assertions:
     min_body_length: 500
     injection_match_count_min: 10
