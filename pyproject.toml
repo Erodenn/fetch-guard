@@ -44,6 +44,9 @@ dev = [
     "pytest",
     "ruff",
     "pyyaml",
+    "mypy",
+    "types-requests",
+    "types-PyYAML",
 ]
 [project.urls]
 Homepage = "https://github.com/Erodenn/fetch-guard"
@@ -78,10 +81,48 @@ select = [
     "C4",   # flake8-comprehensions
     "SIM",  # flake8-simplify
     "PIE",  # flake8-pie
+    "T20",  # flake8-print: stdout is the MCP stdio transport
+    "TID251",  # banned-api: module boundaries below
 ]
 
+# ARCHITECTURAL CONSTRAINTS (unencodable -- enforce via code review / CLAUDE.md)
+# - security/patterns.py is the single source of truth for injection patterns
+# - JS rendering is explicit opt-in, never an automatic fallback
+# - Anticipated tool failures raise the SDK's ToolError; anything else surfaces as a crash
+# - The pipeline never touches the session salt; wrapping happens after run() returns
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"fetch_guard.output".msg = "output/ is CLI-only formatting. The server and pipeline return result dicts; format in cli.py."
+
 [tool.ruff.lint.per-file-ignores]
-"tests/**/*.py" = ["S101"]  # allow assert in tests
-"fetch_guard/cli.py" = ["E402"]  # imports after dependency check
+"tests/**/*.py" = ["S101", "T20", "TID251"]  # assert, print and output/ imports are fine in tests
+"fetch_guard/cli.py" = ["E402", "T20", "TID251"]  # imports after dependency check; CLI owns stdout and output/
+"fetch_guard/__init__.py" = ["T20"]  # dependency-check message goes to stderr before exit
+"fetch_guard/output/**/*.py" = ["TID251"]  # the banned package itself
 "fetch_guard/server.py" = ["E402"]  # imports after dependency check
 "fetch_guard/http/__init__.py" = ["A005"]  # http subpackage shadows stdlib — scoped under fetch_guard
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.mypy]
+python_version = "3.10"
+files = ["fetch_guard"]
+strict = true
+warn_unreachable = true
+enable_error_code = [
+    "ignore-without-code",  # a suppression must name its error code
+    "redundant-expr",
+    "possibly-undefined",
+    "truthy-bool",
+]
+
+# No stubs published for these; silence per-module rather than weakening strict.
+[[tool.mypy.overrides]]
+module = ["extruct.*", "trafilatura.*", "playwright.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
