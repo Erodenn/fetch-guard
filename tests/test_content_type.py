@@ -6,6 +6,7 @@ from fetch_guard.extraction import content_type as content_type_handler
 # classify()
 # ---------------------------------------------------------------------------
 
+
 class TestClassify:
     """Tests for content type classification."""
 
@@ -104,6 +105,7 @@ class TestClassifySniffing:
 # handle()
 # ---------------------------------------------------------------------------
 
+
 class TestHandleJson:
     """Tests for JSON handling."""
 
@@ -121,7 +123,7 @@ class TestHandleJson:
         assert result == f"```json\n{raw}\n```"
 
     def test_json_array(self):
-        raw = '[1, 2, 3]'
+        raw = "[1, 2, 3]"
         result = content_type_handler.handle("json", raw)
         assert "[\n  1,\n  2,\n  3\n]" in result
 

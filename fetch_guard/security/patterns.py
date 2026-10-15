@@ -30,7 +30,6 @@ PATTERNS = [
         re.compile(r"(?:new|updated?|revised?)\s+instructions?\s*:", re.IGNORECASE),
         "high",
     ),
-
     # Ignore-previous patterns
     (
         "ignore_previous",
@@ -60,7 +59,6 @@ PATTERNS = [
         re.compile(r"forget\s+(?:everything|all)\s+(?:above|before|prior)", re.IGNORECASE),
         "high",
     ),
-
     # Role-play instructions
     (
         "pretend_you_are",
@@ -83,7 +81,6 @@ PATTERNS = [
         re.compile(r"(?:from\s+now\s+on\s+)?you\s+are\s+a\s+(?!user|reader|visitor|customer|guest)", re.IGNORECASE),
         "medium",
     ),
-
     # Hidden instruction markers
     (
         "inst_marker",
@@ -95,7 +92,6 @@ PATTERNS = [
         re.compile(r"<<\s*/?SYS\s*>>", re.IGNORECASE),
         "high",
     ),
-
     # Structural fakes — tags that mimic LLM conversation structure
     (
         "fake_system_tag",
@@ -113,6 +109,7 @@ PATTERNS = [
         "high",
     ),
 ]
+
 
 def _load_multilingual() -> list[tuple[str, re.Pattern[str], str]]:
     """Load and compile multilingual injection patterns from JSON.
@@ -147,7 +144,5 @@ PATTERNS: list[PatternEntry] = PATTERNS + MULTILINGUAL_PATTERNS
 # Filtered list of high-severity patterns only — used by decode-and-scan
 # (no point decoding base64/hex to check for medium-severity roleplay patterns)
 HIGH_PATTERNS: list[PatternEntry] = [
-    (name, pattern, severity)
-    for name, pattern, severity in PATTERNS
-    if severity == SEVERITY_HIGH
+    (name, pattern, severity) for name, pattern, severity in PATTERNS if severity == SEVERITY_HIGH
 ]

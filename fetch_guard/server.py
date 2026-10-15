@@ -61,8 +61,7 @@ def fetch(
     """
     if headers is not None:
         warnings.warn(
-            "The 'headers' parameter is deprecated and will be removed in the next release. "
-            "Use 'auth_token' instead.",
+            "The 'headers' parameter is deprecated and will be removed in the next release. Use 'auth_token' instead.",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -94,8 +93,7 @@ def fetch(
     # crash with its text withheld.
     if strict and result["risk_level"] == injection_guard.RISK_HIGH:
         raise ToolError(
-            f"High-risk prompt injection detected ({len(result['injection_matches'])} matches). "
-            f"URL: {result['url']}"
+            f"High-risk prompt injection detected ({len(result['injection_matches'])} matches). URL: {result['url']}"
         )
 
     return result

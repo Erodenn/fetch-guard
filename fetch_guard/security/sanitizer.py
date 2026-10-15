@@ -40,23 +40,40 @@ OFFSCREEN_STYLE_PATTERNS = [
 # Named color table for color-match hidden text detection (~32 CSS named colors)
 _NAMED_COLORS: dict[str, tuple[int, int, int]] = {
     # Light/white-ish
-    "white": (255, 255, 255), "ivory": (255, 255, 240), "snow": (255, 250, 250),
-    "ghostwhite": (248, 248, 255), "floralwhite": (255, 250, 240),
-    "linen": (250, 240, 230), "seashell": (255, 245, 238),
-    "honeydew": (240, 255, 240), "mintcream": (245, 255, 250),
-    "azure": (240, 255, 255), "aliceblue": (240, 248, 255),
-    "lavender": (230, 230, 250), "lightyellow": (255, 255, 224),
-    "lightcyan": (224, 255, 255), "beige": (245, 245, 220),
-    "oldlace": (253, 245, 230), "cornsilk": (255, 248, 220),
-    "papayawhip": (255, 239, 213), "whitesmoke": (245, 245, 245),
+    "white": (255, 255, 255),
+    "ivory": (255, 255, 240),
+    "snow": (255, 250, 250),
+    "ghostwhite": (248, 248, 255),
+    "floralwhite": (255, 250, 240),
+    "linen": (250, 240, 230),
+    "seashell": (255, 245, 238),
+    "honeydew": (240, 255, 240),
+    "mintcream": (245, 255, 250),
+    "azure": (240, 255, 255),
+    "aliceblue": (240, 248, 255),
+    "lavender": (230, 230, 250),
+    "lightyellow": (255, 255, 224),
+    "lightcyan": (224, 255, 255),
+    "beige": (245, 245, 220),
+    "oldlace": (253, 245, 230),
+    "cornsilk": (255, 248, 220),
+    "papayawhip": (255, 239, 213),
+    "whitesmoke": (245, 245, 245),
     "antiquewhite": (250, 235, 215),
     # Dark/black-ish
-    "black": (0, 0, 0), "darkgray": (169, 169, 169), "darkgrey": (169, 169, 169),
-    "dimgray": (105, 105, 105), "dimgrey": (105, 105, 105),
-    "darkslategray": (47, 79, 79), "darkslategrey": (47, 79, 79),
+    "black": (0, 0, 0),
+    "darkgray": (169, 169, 169),
+    "darkgrey": (169, 169, 169),
+    "dimgray": (105, 105, 105),
+    "dimgrey": (105, 105, 105),
+    "darkslategray": (47, 79, 79),
+    "darkslategrey": (47, 79, 79),
     # Neutrals
-    "silver": (192, 192, 192), "gray": (128, 128, 128), "grey": (128, 128, 128),
-    "lightgray": (211, 211, 211), "lightgrey": (211, 211, 211),
+    "silver": (192, 192, 192),
+    "gray": (128, 128, 128),
+    "grey": (128, 128, 128),
+    "lightgray": (211, 211, 211),
+    "lightgrey": (211, 211, 211),
 }
 
 # Compiled regexes for color-match hidden text detection
@@ -93,9 +110,9 @@ NONPRINTING_CODEPOINTS = {
     "\u2068",  # first strong isolate
     "\u2069",  # pop directional isolate
     # Unicode Tags (category Cf — already caught by category check, explicit for documentation)
-    "\U000E0001",  # language tag
-    "\U000E0020",  # tag space (start of ASCII-mapped range)
-    "\U000E007F",  # cancel tag
+    "\U000e0001",  # language tag
+    "\U000e0020",  # tag space (start of ASCII-mapped range)
+    "\U000e007f",  # cancel tag
 }
 
 
@@ -181,8 +198,7 @@ def _extract_color_pair(style: str) -> "tuple[str | None, str | None]":
     """Extract raw color and background-color values from a style attribute string."""
     cm = _COLOR_PROP_RE.search(style)
     bm = _BG_COLOR_PROP_RE.search(style)
-    return (cm.group(1).strip() if cm else None,
-            bm.group(1).strip() if bm else None)
+    return (cm.group(1).strip() if cm else None, bm.group(1).strip() if bm else None)
 
 
 def _is_color_match_hidden(element) -> bool:

@@ -20,8 +20,7 @@ def fetch(url, timeout=180, headers=None):
     except ImportError:
         return error_result(
             url,
-            "Playwright is not installed. "
-            "Install with: pip install playwright && playwright install chromium",
+            "Playwright is not installed. Install with: pip install playwright && playwright install chromium",
         )
 
     timeout_ms = timeout * 1000
@@ -39,9 +38,7 @@ def fetch(url, timeout=180, headers=None):
                 page.wait_for_load_state("networkidle", timeout=timeout_ms)
 
             status_code = response.status if response else None
-            content_type = (
-                response.headers.get("content-type", "") if response else ""
-            )
+            content_type = response.headers.get("content-type", "") if response else ""
             html = page.content()
             final_url = page.url
 

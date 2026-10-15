@@ -81,7 +81,6 @@ class TestSanitize:
         assert "visible" in cleaned
         assert tally["hidden_elements"] == 3
 
-
     def test_strips_bidi_isolates(self):
         html = "<p>he\u2066ll\u2067o\u2069</p>"
         cleaned, _soup, tally = html_sanitizer.sanitize(html)
@@ -91,11 +90,11 @@ class TestSanitize:
         assert tally["nonprinting_chars"] >= 3
 
     def test_strips_unicode_tags(self):
-        html = "<p>he\U000E0001ll\U000E0020o\U000E007F</p>"
+        html = "<p>he\U000e0001ll\U000e0020o\U000e007f</p>"
         cleaned, _soup, tally = html_sanitizer.sanitize(html)
-        assert "\U000E0001" not in cleaned
-        assert "\U000E0020" not in cleaned
-        assert "\U000E007F" not in cleaned
+        assert "\U000e0001" not in cleaned
+        assert "\U000e0020" not in cleaned
+        assert "\U000e007f" not in cleaned
         assert tally["nonprinting_chars"] >= 3
 
     def test_removes_css_class_hidden(self):
@@ -209,23 +208,17 @@ class TestColorMatchDetection:
         return f'<p style="{style}">inject</p><p>visible</p>'
 
     def test_hex_hex_exact_match_removed(self):
-        cleaned, _soup, tally = html_sanitizer.sanitize(
-            self._make_html("color:#ffffff;background-color:#ffffff")
-        )
+        cleaned, _soup, tally = html_sanitizer.sanitize(self._make_html("color:#ffffff;background-color:#ffffff"))
         assert "inject" not in cleaned
         assert tally["hidden_elements"] >= 1
 
     def test_name_name_exact_match_removed(self):
-        cleaned, _soup, tally = html_sanitizer.sanitize(
-            self._make_html("color:white;background-color:white")
-        )
+        cleaned, _soup, tally = html_sanitizer.sanitize(self._make_html("color:white;background-color:white"))
         assert "inject" not in cleaned
         assert tally["hidden_elements"] >= 1
 
     def test_rgb_rgb_match_removed(self):
-        cleaned, _soup, tally = html_sanitizer.sanitize(
-            self._make_html("color:rgb(0,0,0);background-color:rgb(0,0,0)")
-        )
+        cleaned, _soup, tally = html_sanitizer.sanitize(self._make_html("color:rgb(0,0,0);background-color:rgb(0,0,0)"))
         assert "inject" not in cleaned
         assert tally["hidden_elements"] >= 1
 
@@ -237,58 +230,42 @@ class TestColorMatchDetection:
         assert tally["hidden_elements"] >= 1
 
     def test_hex_named_cross_format_removed(self):
-        cleaned, _soup, tally = html_sanitizer.sanitize(
-            self._make_html("color:#000000;background-color:black")
-        )
+        cleaned, _soup, tally = html_sanitizer.sanitize(self._make_html("color:#000000;background-color:black"))
         assert "inject" not in cleaned
         assert tally["hidden_elements"] >= 1
 
     def test_3digit_6digit_hex_removed(self):
-        cleaned, _soup, tally = html_sanitizer.sanitize(
-            self._make_html("color:#fff;background-color:#ffffff")
-        )
+        cleaned, _soup, tally = html_sanitizer.sanitize(self._make_html("color:#fff;background-color:#ffffff"))
         assert "inject" not in cleaned
         assert tally["hidden_elements"] >= 1
 
     def test_8digit_hex_alpha_kept(self):
         # 8-digit hex with non-zero alpha (50%) — not caught by transparency pattern,
         # and color-match detection skips it (alpha channel present)
-        cleaned, _soup, tally = html_sanitizer.sanitize(
-            self._make_html("color:#ffffff80;background-color:#ffffff")
-        )
+        cleaned, _soup, tally = html_sanitizer.sanitize(self._make_html("color:#ffffff80;background-color:#ffffff"))
         assert "inject" in cleaned
 
     def test_different_colors_kept(self):
-        cleaned, _soup, tally = html_sanitizer.sanitize(
-            self._make_html("color:#000000;background-color:#ffffff")
-        )
+        cleaned, _soup, tally = html_sanitizer.sanitize(self._make_html("color:#000000;background-color:#ffffff"))
         assert "inject" in cleaned
 
     def test_only_color_no_bg_kept(self):
-        cleaned, _soup, tally = html_sanitizer.sanitize(
-            self._make_html("color:white")
-        )
+        cleaned, _soup, tally = html_sanitizer.sanitize(self._make_html("color:white"))
         assert "inject" in cleaned
 
     def test_unrecognized_named_color_kept(self):
         # "thistle" is not in the curated named color table
-        cleaned, _soup, tally = html_sanitizer.sanitize(
-            self._make_html("color:thistle;background-color:thistle")
-        )
+        cleaned, _soup, tally = html_sanitizer.sanitize(self._make_html("color:thistle;background-color:thistle"))
         assert "inject" in cleaned
 
     def test_bg_color_before_color_removed(self):
         # Property order should not matter
-        cleaned, _soup, tally = html_sanitizer.sanitize(
-            self._make_html("background-color:white;color:white")
-        )
+        cleaned, _soup, tally = html_sanitizer.sanitize(self._make_html("background-color:white;color:white"))
         assert "inject" not in cleaned
         assert tally["hidden_elements"] >= 1
 
     def test_tally_increments_hidden_elements(self):
-        _cleaned, _soup, tally = html_sanitizer.sanitize(
-            self._make_html("color:#ff0000;background-color:#ff0000")
-        )
+        _cleaned, _soup, tally = html_sanitizer.sanitize(self._make_html("color:#ff0000;background-color:#ff0000"))
         assert tally["hidden_elements"] >= 1
 
     def test_display_none_takes_priority(self):
@@ -300,16 +277,12 @@ class TestColorMatchDetection:
         assert tally["hidden_elements"] >= 1
 
     def test_spaces_in_values_removed(self):
-        cleaned, _soup, tally = html_sanitizer.sanitize(
-            self._make_html("color: white ; background-color: white")
-        )
+        cleaned, _soup, tally = html_sanitizer.sanitize(self._make_html("color: white ; background-color: white"))
         assert "inject" not in cleaned
         assert tally["hidden_elements"] >= 1
 
     def test_black_hex_named_cross_format_removed(self):
-        cleaned, _soup, tally = html_sanitizer.sanitize(
-            self._make_html("color:black;background-color:#000000")
-        )
+        cleaned, _soup, tally = html_sanitizer.sanitize(self._make_html("color:black;background-color:#000000"))
         assert "inject" not in cleaned
         assert tally["hidden_elements"] >= 1
 

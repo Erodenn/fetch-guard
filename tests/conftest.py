@@ -10,6 +10,7 @@ import pytest
 # Builder helpers (mirrored from test_pipeline.py for cross-file use)
 # ---------------------------------------------------------------------------
 
+
 def _mock_fetch_result(
     html="<html><body><p>Hello world</p></body></html>",
     url="https://example.com",
@@ -50,8 +51,12 @@ def _zero_tally(**overrides):
 
 def _null_meta(**overrides):
     meta = {
-        "title": None, "author": None, "date": None,
-        "description": None, "canonical_url": None, "image": None,
+        "title": None,
+        "author": None,
+        "date": None,
+        "description": None,
+        "canonical_url": None,
+        "image": None,
     }
     meta.update(overrides)
     return meta
@@ -94,6 +99,7 @@ def _build_pipeline_result(**overrides):
 # MockedPipelineContext
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class MockedPipelineContext:
     check_llms_txt: MagicMock
@@ -118,6 +124,7 @@ class MockedPipelineContext:
 # ---------------------------------------------------------------------------
 # mocked_pipeline fixture
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def mocked_pipeline():
@@ -156,6 +163,7 @@ def mocked_pipeline():
 # Scenario helpers
 # ---------------------------------------------------------------------------
 
+
 def bot_block_scenario() -> dict:
     return {"detect_edges": _mock_edge_result(edge_type="bot_block")}
 
@@ -169,11 +177,7 @@ def paywall_scenario() -> dict:
 
 
 def llms_txt_scenario(content: str = "# LLMs\nContent") -> dict:
-    return {
-        "check_llms_txt": _mock_llms_result(
-            available=True, content=content, url="https://example.com/llms.txt"
-        )
-    }
+    return {"check_llms_txt": _mock_llms_result(available=True, content=content, url="https://example.com/llms.txt")}
 
 
 def high_risk_scan_scenario(pattern: str = "ignore_previous") -> dict:

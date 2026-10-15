@@ -33,8 +33,7 @@ def check_deps(extra=None):
 
     if missing:
         print(
-            f"Missing dependencies: {', '.join(missing)}\n"
-            f"Install with: pip install {' '.join(missing)}",
+            f"Missing dependencies: {', '.join(missing)}\nInstall with: pip install {' '.join(missing)}",
             file=sys.stderr,
         )
         sys.exit(1)

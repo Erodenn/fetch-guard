@@ -12,6 +12,7 @@ class TestPlaywrightFetch:
         """When playwright is not importable, return helpful error."""
         with patch.dict("sys.modules", {"playwright": None, "playwright.sync_api": None}):
             import importlib
+
             importlib.reload(playwright_fetcher)
 
             result = playwright_fetcher.fetch("https://example.com")
@@ -62,8 +63,8 @@ class TestPlaywrightFetchIntegration:
             mock_response = MagicMock()
             mock_response.status = status
             mock_response.headers = MagicMock()
-            mock_response.headers.get.side_effect = (
-                lambda key, default="": content_type if key == "content-type" else default
+            mock_response.headers.get.side_effect = lambda key, default="": (
+                content_type if key == "content-type" else default
             )
             mock_page.goto.return_value = mock_response
 
@@ -151,7 +152,7 @@ class TestPlaywrightFetchIntegration:
             result = playwright_fetcher.fetch("https://example.com")
 
         assert result["status_code"] is None
-        assert result["error"] is None   # no exception raised
+        assert result["error"] is None  # no exception raised
 
     def test_goto_timeout_returns_error_result(self):
         """page.goto() TimeoutError must propagate to error_result, not crash."""

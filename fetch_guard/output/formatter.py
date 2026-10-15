@@ -51,9 +51,7 @@ def format_output(result, salted_body):
     if result.get("retried"):
         header_lines.append("Retried: yes (alternative User-Agent)")
     if result.get("js_hint"):
-        header_lines.append(
-            "Hint: static extraction returned no content -- retry with --js for JavaScript rendering"
-        )
+        header_lines.append("Hint: static extraction returned no content -- retry with --js for JavaScript rendering")
 
     header_lines.append("---")
     header = "\n".join(header_lines)

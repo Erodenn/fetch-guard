@@ -32,8 +32,8 @@ from .security import merge_scan_results, sanitize, scan, scan_metadata
 
 _ZERO_TALLY = {"hidden_elements": 0, "offscreen_elements": 0, "nonprinting_chars": 0}
 
-_MAX_RAW_BYTES = 2 * 1024 * 1024   # 2MB  — pre-extraction sanity guard
-_MAX_EXTRACTED_BYTES = 20 * 1024    # 20KB — post-extraction LLM context guard
+_MAX_RAW_BYTES = 2 * 1024 * 1024  # 2MB  — pre-extraction sanity guard
+_MAX_EXTRACTED_BYTES = 20 * 1024  # 20KB — post-extraction LLM context guard
 
 
 class FetchError(Exception):
@@ -236,18 +236,16 @@ def run(url, timeout=180, max_words=None, strict=False, js=False, links="domains
     # 5. Content-type routing — non-HTML gets its own fast path
     if not llms_txt_replaced:
         content_class = classify_content_type(
-            content_type, (raw_html[:500] if raw_html else ""),
+            content_type,
+            (raw_html[:500] if raw_html else ""),
         )
     else:
         content_class = CLASS_PLAIN_TEXT  # llms.txt is plain text, not HTML
 
     if content_class == CLASS_BINARY:
-        raise FetchError(
-            f"Binary content type not supported: {content_type}"
-        )
+        raise FetchError(f"Binary content type not supported: {content_type}")
 
     if content_class not in (CLASS_HTML, CLASS_UNKNOWN):
-
         markdown = handle_content_type(content_class, raw_html)
         risk_result = scan(markdown)
         _check_extracted_size(markdown, max_words)

@@ -128,32 +128,22 @@ def test_catalog_entry(entry: dict) -> None:
 
     if "min_body_length" in assertions:
         min_len = assertions["min_body_length"]
-        assert len(result["body"]) >= min_len, (
-            f"body length {len(result['body'])} < expected minimum {min_len}"
-        )
+        assert len(result["body"]) >= min_len, f"body length {len(result['body'])} < expected minimum {min_len}"
 
     if "injection_match_count_min" in assertions:
         min_count = assertions["injection_match_count_min"]
         actual = len(result["injection_matches"])
-        assert actual >= min_count, (
-            f"injection_matches count {actual} < expected minimum {min_count}"
-        )
+        assert actual >= min_count, f"injection_matches count {actual} < expected minimum {min_count}"
 
     if "links_count_min" in assertions:
         min_count = assertions["links_count_min"]
         links = result["links"]
         actual = len(links) if isinstance(links, list) else len(links)
-        assert actual >= min_count, (
-            f"links count {actual} < expected minimum {min_count}"
-        )
+        assert actual >= min_count, f"links count {actual} < expected minimum {min_count}"
 
     if assertions.get("url_changed"):
-        assert result["url"] != url, (
-            f"Expected URL to change after redirect, but got same URL: {url!r}"
-        )
+        assert result["url"] != url, f"Expected URL to change after redirect, but got same URL: {url!r}"
 
     for key, expected in (assertions.get("fields") or {}).items():
         actual = _resolve_field(result, key)
-        assert actual == expected, (
-            f"Field '{key}': expected {expected!r}, got {actual!r}"
-        )
+        assert actual == expected, f"Field '{key}': expected {expected!r}, got {actual!r}"

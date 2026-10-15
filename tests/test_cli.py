@@ -41,6 +41,7 @@ def _run(*extra_args, result=None, side_effect=None):
 # Header parsing
 # ---------------------------------------------------------------------------
 
+
 class TestHeaderParsing:
     """Tests for --header argument parsing."""
 
@@ -76,6 +77,7 @@ class TestHeaderParsing:
 # ---------------------------------------------------------------------------
 # Exit codes
 # ---------------------------------------------------------------------------
+
 
 class TestExitCodes:
     """Tests for CLI exit codes."""
@@ -115,6 +117,7 @@ class TestExitCodes:
 # Flag passthrough
 # ---------------------------------------------------------------------------
 
+
 class TestFlagPassthrough:
     """Tests that CLI flags pass correctly to pipeline_run."""
 
@@ -151,6 +154,7 @@ class TestFlagPassthrough:
 # ---------------------------------------------------------------------------
 # URL argument
 # ---------------------------------------------------------------------------
+
 
 class TestURLArgument:
     """Tests for positional URL argument."""

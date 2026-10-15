@@ -14,6 +14,7 @@ from conftest import _build_pipeline_result
 # Tool function tests (call the function directly, not through MCP transport)
 # ---------------------------------------------------------------------------
 
+
 class TestFetchTool:
     """Tests for the fetch MCP tool handler."""
 
@@ -153,6 +154,6 @@ class TestFetchTool:
         assert "Plain content" in result["body"]
         # Salt is 8 hex chars
         tag_prefix = "<fetch-content-"
-        salt = result["body"][len(tag_prefix):len(tag_prefix) + 8]
+        salt = result["body"][len(tag_prefix) : len(tag_prefix) + 8]
         assert len(salt) == 8
         assert result["body"].endswith(f"</fetch-content-{salt}>")

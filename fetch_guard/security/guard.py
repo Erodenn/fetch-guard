@@ -82,11 +82,13 @@ def _scan_decoded(text, candidates_regex, decoder_fn, prefix):
             continue
         for name, pattern, severity in HIGH_PATTERNS:
             for _hit in pattern.finditer(decoded):
-                matches.append({
-                    "pattern": f"{prefix}:{name}",
-                    "severity": severity,
-                    "snippet": _snippet(text, candidate_match),
-                })
+                matches.append(
+                    {
+                        "pattern": f"{prefix}:{name}",
+                        "severity": severity,
+                        "snippet": _snippet(text, candidate_match),
+                    }
+                )
                 break  # one match per pattern per candidate is enough
     return matches
 
@@ -110,11 +112,13 @@ def scan(text):
     original_hits = {}  # name → list of match positions
     for name, pattern, severity in PATTERNS:
         for match in pattern.finditer(text):
-            matches.append({
-                "pattern": name,
-                "severity": severity,
-                "snippet": _snippet(text, match),
-            })
+            matches.append(
+                {
+                    "pattern": name,
+                    "severity": severity,
+                    "snippet": _snippet(text, match),
+                }
+            )
             original_hits.setdefault(name, set()).add((match.start(), match.end()))
 
     # Phase 2: Homoglyph normalization scan
@@ -126,16 +130,17 @@ def scan(text):
                 if name in original_hits:
                     # Check if any original hit overlaps with this normalized hit
                     already_found = any(
-                        abs(match.start() - orig_start) < 10
-                        for orig_start, _orig_end in original_hits[name]
+                        abs(match.start() - orig_start) < 10 for orig_start, _orig_end in original_hits[name]
                     )
                     if already_found:
                         continue
-                matches.append({
-                    "pattern": f"homoglyph:{name}",
-                    "severity": severity,
-                    "snippet": _snippet(normalized, match),
-                })
+                matches.append(
+                    {
+                        "pattern": f"homoglyph:{name}",
+                        "severity": severity,
+                        "snippet": _snippet(normalized, match),
+                    }
+                )
 
     # Phase 3: Decode-and-scan (base64, hex, and URL percent-encoding)
     matches.extend(_scan_decoded(text, _BASE64_RE, _decode_base64, "base64_decoded"))
@@ -147,11 +152,13 @@ def scan(text):
     if rot13_text != text:
         for name, pattern, severity in HIGH_PATTERNS:
             for match in pattern.finditer(rot13_text):
-                matches.append({
-                    "pattern": f"rot13:{name}",
-                    "severity": severity,
-                    "snippet": _snippet(rot13_text, match),
-                })
+                matches.append(
+                    {
+                        "pattern": f"rot13:{name}",
+                        "severity": severity,
+                        "snippet": _snippet(rot13_text, match),
+                    }
+                )
 
     return _risk_from_matches(matches)
 
@@ -177,11 +184,13 @@ def scan_metadata(metadata_dict):
             continue
         result = scan(value)
         for match in result["matches"]:
-            all_matches.append({
-                "pattern": f"metadata:{field}:{match['pattern']}",
-                "severity": match["severity"],
-                "snippet": match["snippet"],
-            })
+            all_matches.append(
+                {
+                    "pattern": f"metadata:{field}:{match['pattern']}",
+                    "severity": match["severity"],
+                    "snippet": match["snippet"],
+                }
+            )
     return _risk_from_matches(all_matches)
 
 

@@ -15,6 +15,7 @@ check_deps()
 # Ensure consistent UTF-8 CLI output on Windows
 if sys.stdout.encoding != "utf-8":
     import io
+
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
@@ -31,6 +32,7 @@ from .security import guard as injection_guard
 # CLI
 # ---------------------------------------------------------------------------
 
+
 def main():
     parser = argparse.ArgumentParser(
         description="Fetch a URL and return clean, LLM-ready markdown with injection safety scanning.",
@@ -40,27 +42,38 @@ def main():
         help="URL to fetch",
     )
     parser.add_argument(
-        "--timeout", type=int, default=180,
+        "--timeout",
+        type=int,
+        default=180,
         help="Request timeout in seconds (default: 180)",
     )
     parser.add_argument(
-        "--max-words", type=int, default=None,
+        "--max-words",
+        type=int,
+        default=None,
         help="Optional word cap on extracted body content",
     )
     parser.add_argument(
-        "--strict", action="store_true",
+        "--strict",
+        action="store_true",
         help="Exit nonzero (code 2) on high-risk injection detection",
     )
     parser.add_argument(
-        "--links", choices=["domains", "full"], default="domains",
+        "--links",
+        choices=["domains", "full"],
+        default="domains",
         help="Link extraction mode: 'domains' (default) or 'full' for all URLs with anchor text",
     )
     parser.add_argument(
-        "--js", action="store_true",
+        "--js",
+        action="store_true",
         help="Use Playwright for JavaScript-rendered pages (requires playwright + chromium)",
     )
     parser.add_argument(
-        "--header", action="append", dest="headers", metavar="KEY:VALUE",
+        "--header",
+        action="append",
+        dest="headers",
+        metavar="KEY:VALUE",
         help="Custom HTTP header (repeatable, e.g. --header Authorization:Bearer token)",
     )
 
