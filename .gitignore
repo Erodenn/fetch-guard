@@ -37,10 +37,14 @@ Desktop.ini
 # MCP local config
 .mcp.json
 
-# Plans / scope docs
+# Plans, scope docs, research, handoffs: local working docs only
 plans/
 
-# AI workspace
-CLAUDE.md
-docs/
+# AI workspace: public repo, private agent context
 .claude/
+*.local.md
+
+# Root markdown is local working material except the public docs
+/*.md
+!README.md
+!CONTRIBUTING.md
