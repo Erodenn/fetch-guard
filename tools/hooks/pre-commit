@@ -1,0 +1,48 @@
+#!/bin/sh
+# pre-commit: default-branch guard, then format staged files and re-stage them.
+
+DEFAULT_BRANCH="main"
+
+branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")"
+if [ "$branch" = "$DEFAULT_BRANCH" ] && [ "${ALLOW_DEFAULT_BRANCH_COMMIT:-}" != "1" ]; then
+    echo "pre-commit: refusing to commit on '$DEFAULT_BRANCH' -- work lands from a branch." >&2
+    echo "  Create a branch, or set ALLOW_DEFAULT_BRANCH_COMMIT=1 for a deliberate exception." >&2
+    exit 1
+fi
+
+# The project venv carries ruff; global Python may not.
+RUFF=""
+for candidate in .venv/Scripts/ruff.exe .venv/bin/ruff; do
+    if [ -x "$candidate" ]; then
+        RUFF="$candidate"
+        break
+    fi
+done
+if [ -z "$RUFF" ] && command -v ruff >/dev/null 2>&1; then
+    RUFF="ruff"
+fi
+
+staged="$(git diff --cached --name-only --diff-filter=ACMR -- '*.py')"
+if [ -n "$staged" ]; then
+    if [ -n "$RUFF" ]; then
+        unstaged="$(git diff --name-only)"
+        set -f
+        IFS='
+'
+        for f in $staged; do
+            "$RUFF" format "$f" || {
+                echo "pre-commit: formatter failed on '$f'." >&2
+                exit 1
+            }
+            if printf '%s\n' "$unstaged" | grep -Fxq -- "$f"; then
+                echo "pre-commit: note: '$f' is partially staged -- formatted the worktree copy but did not re-stage it." >&2
+            else
+                git add -- "$f"
+            fi
+        done
+    else
+        echo "pre-commit: ruff not found; skipping the format step." >&2
+    fi
+fi
+
+exit 0
