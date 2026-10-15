@@ -6,6 +6,7 @@ by both the CLI (fetch.py) and the MCP server (server.py).
 
 import concurrent.futures
 from datetime import datetime, timezone
+from typing import Any, cast
 
 from .extraction import (
     CLASS_BINARY,
@@ -40,7 +41,7 @@ class FetchError(Exception):
     """Raised when the fetch pipeline encounters a non-recoverable error."""
 
 
-def _truncate(text, max_words):
+def _truncate(text: str, max_words: int | None) -> tuple[str, int | None]:
     """Truncate text to a word limit. Returns (text, truncated_at)."""
     if max_words is None:
         return text, None
@@ -50,7 +51,7 @@ def _truncate(text, max_words):
     return text, None
 
 
-def _check_extracted_size(markdown, max_words):
+def _check_extracted_size(markdown: str, max_words: int | None) -> None:
     """Raise FetchError if extracted content exceeds the size guard limit.
 
     Only checked when max_words is None — if the caller set an explicit word
@@ -68,7 +69,7 @@ def _check_extracted_size(markdown, max_words):
         )
 
 
-def _build_edge_cases(edge_result):
+def _build_edge_cases(edge_result: dict[str, Any] | None) -> dict[str, Any] | None:
     """Build the edge_cases dict from an edge detector result, or None."""
     if edge_result and edge_result["edge_type"]:
         return {
@@ -78,7 +79,15 @@ def _build_edge_cases(edge_result):
     return None
 
 
-def _build_status(risk_result, content_type, edge_result, sanitization, js_rendered, retried, truncated_at):
+def _build_status(
+    risk_result: dict[str, Any],
+    content_type: str,
+    edge_result: dict[str, Any] | None,
+    sanitization: dict[str, int],
+    js_rendered: bool,
+    retried: bool,
+    truncated_at: int | None,
+) -> str:
     """Build the quick-glance status string shown at the top of the tool result."""
     parts = [risk_result["risk"], content_type]
     edge_cases = _build_edge_cases(edge_result)
@@ -98,22 +107,22 @@ def _build_status(risk_result, content_type, edge_result, sanitization, js_rende
 
 def _build_result(
     *,
-    url,
-    body,
-    content_type,
-    metadata,
-    links,
-    links_mode,
-    risk_result,
-    edge_result,
-    sanitization,
-    llms_txt_available,
-    llms_txt_replaced,
-    js_rendered,
-    js_hint,
-    retried,
-    truncated_at,
-):
+    url: str,
+    body: str,
+    content_type: str,
+    metadata: dict[str, Any],
+    links: list[str] | dict[str, list[dict[str, str]]],
+    links_mode: str,
+    risk_result: dict[str, Any],
+    edge_result: dict[str, Any] | None,
+    sanitization: dict[str, int],
+    llms_txt_available: bool,
+    llms_txt_replaced: bool,
+    js_rendered: bool,
+    js_hint: bool,
+    retried: bool,
+    truncated_at: int | None,
+) -> dict[str, Any]:
     """Assemble the final pipeline result dict."""
     return {
         "status": _build_status(
@@ -139,7 +148,15 @@ def _build_result(
     }
 
 
-def run(url, timeout=180, max_words=None, strict=False, js=False, links="domains", headers=None):
+def run(
+    url: str,
+    timeout: int = 180,
+    max_words: int | None = None,
+    strict: bool = False,
+    js: bool = False,
+    links: str = "domains",
+    headers: dict[str, str] | None = None,
+) -> dict[str, Any]:
     """Execute the fetch pipeline.
 
     Args:
@@ -161,7 +178,7 @@ def run(url, timeout=180, max_words=None, strict=False, js=False, links="domains
     # (server.py, cli.py) inspect `risk_level` in the result dict to decide
     # whether to raise/exit on high-risk injection.
     js_rendered = js
-    edge_result = None
+    edge_result: dict[str, Any] | None = None
     retried = False
     js_hint = False
 
@@ -246,14 +263,15 @@ def run(url, timeout=180, max_words=None, strict=False, js=False, links="domains
         raise FetchError(f"Binary content type not supported: {content_type}")
 
     if content_class not in (CLASS_HTML, CLASS_UNKNOWN):
-        markdown = handle_content_type(content_class, raw_html)
-        risk_result = scan(markdown)
-        _check_extracted_size(markdown, max_words)
-        markdown, truncated_at = _truncate(markdown, max_words)
+        # handle() returns None only for CLASS_BINARY, which raised above.
+        converted = cast(str, handle_content_type(content_class, raw_html))
+        risk_result = scan(converted)
+        _check_extracted_size(converted, max_words)
+        converted, truncated_at = _truncate(converted, max_words)
 
         return _build_result(
             url=final_url,
-            body=markdown,
+            body=converted,
             content_type=content_class,
             metadata=null_metadata(),
             links=[] if links == "domains" else {},
@@ -294,6 +312,7 @@ def run(url, timeout=180, max_words=None, strict=False, js=False, links="domains
     metadata = null_metadata() if llms_txt_replaced else extract_metadata(cleaned_html, soup=soup)
 
     # 10. Extract links (reuse sanitized soup to avoid re-parsing)
+    extracted_links: list[str] | dict[str, list[dict[str, str]]]
     if llms_txt_replaced:
         extracted_links = [] if links == "domains" else {}
     elif links == "full":

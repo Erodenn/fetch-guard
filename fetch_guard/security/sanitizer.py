@@ -2,8 +2,10 @@
 
 import re
 import unicodedata
+from typing import cast
 
 from bs4 import BeautifulSoup
+from bs4.element import Tag
 
 # CSS patterns for hidden/off-screen elements
 HIDDEN_STYLE_PATTERNS = [
@@ -116,16 +118,16 @@ NONPRINTING_CODEPOINTS = {
 }
 
 
-def _is_decomposed(element):
+def _is_decomposed(element: Tag) -> bool:
     """Check if a BeautifulSoup element has been decomposed."""
     return element.attrs is None
 
 
-def _matches_style_patterns(element, patterns):
+def _matches_style_patterns(element: Tag, patterns: list[re.Pattern[str]]) -> bool:
     """Check if an element's inline style matches any pattern in the list."""
     if _is_decomposed(element):
         return False
-    style = element.get("style", "")
+    style = cast(str, element.get("style", ""))
     if not style:
         return False
     return any(p.search(style) for p in patterns)
@@ -138,7 +140,7 @@ _CSS_RULE_RE = re.compile(
 )
 
 
-def _remove_style_hidden(soup):
+def _remove_style_hidden(soup: BeautifulSoup) -> int:
     """Remove elements targeted by CSS rules that hide content via <style> tags.
 
     Parses <style> blocks, finds rules with display:none / visibility:hidden / opacity:0,
@@ -201,11 +203,11 @@ def _extract_color_pair(style: str) -> "tuple[str | None, str | None]":
     return (cm.group(1).strip() if cm else None, bm.group(1).strip() if bm else None)
 
 
-def _is_color_match_hidden(element) -> bool:
+def _is_color_match_hidden(element: Tag) -> bool:
     """Return True if element has matching foreground and background color (invisible text)."""
     if _is_decomposed(element):
         return False
-    style = element.get("style", "")
+    style = cast(str, element.get("style", ""))
     if not style:
         return False
     color_val, bg_val = _extract_color_pair(style)
@@ -218,7 +220,7 @@ def _is_color_match_hidden(element) -> bool:
     return color_rgb == bg_rgb
 
 
-def _strip_nonprinting(text):
+def _strip_nonprinting(text: str) -> tuple[str, int]:
     """Remove non-printing unicode characters. Returns (cleaned_text, count_removed)."""
     count = 0
     chars = []
@@ -230,7 +232,7 @@ def _strip_nonprinting(text):
     return "".join(chars), count
 
 
-def sanitize(html):
+def sanitize(html: str) -> tuple[str, BeautifulSoup, dict[str, int]]:
     """Remove hidden content vectors from HTML.
 
     Returns (cleaned_html_string, soup, tally_dict).
@@ -261,7 +263,7 @@ def sanitize(html):
     tally["hidden_elements"] += _remove_style_hidden(soup)
 
     # Remove aria-hidden elements
-    for element in list(soup.find_all(attrs={"aria-hidden": "true"})):
+    for element in list(soup.find_all(None, attrs={"aria-hidden": "true"})):
         element.decompose()
         tally["hidden_elements"] += 1
 

@@ -33,7 +33,7 @@ from .security import guard as injection_guard
 # ---------------------------------------------------------------------------
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(
         description="Fetch a URL and return clean, LLM-ready markdown with injection safety scanning.",
     )
@@ -79,7 +79,7 @@ def main():
 
     args = parser.parse_args()
 
-    headers = None
+    headers: dict[str, str] | None = None
     if args.headers:
         headers = {}
         for h in args.headers:

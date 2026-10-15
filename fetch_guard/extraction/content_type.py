@@ -9,6 +9,7 @@ import io
 import json
 import re
 import xml.etree.ElementTree as ET
+from typing import Any
 
 # Content class constants — used in classify() returns, handle() dispatch,
 # and pipeline.py comparisons.
@@ -54,14 +55,14 @@ _BINARY_PREFIXES = (
 _HTML_SNIFF_RE = re.compile(r"^\s*(<\!doctype\s+html|<html[\s>])", re.IGNORECASE)
 
 
-def _parse_mime(content_type_header):
+def _parse_mime(content_type_header: str | None) -> str:
     """Extract the MIME type from a Content-Type header, stripping params."""
     if not content_type_header:
         return ""
     return content_type_header.split(";")[0].strip().lower()
 
 
-def classify(content_type_header, body_preview=""):
+def classify(content_type_header: str | None, body_preview: str = "") -> str:
     """Classify a Content-Type header into a content class.
 
     Args:
@@ -95,7 +96,7 @@ def classify(content_type_header, body_preview=""):
     return content_class
 
 
-def _handle_json(raw_body):
+def _handle_json(raw_body: str) -> str:
     """Format JSON content as a fenced code block."""
     try:
         parsed = json.loads(raw_body)
@@ -108,12 +109,12 @@ def _handle_json(raw_body):
 _FEED_SNIFF_RE = re.compile(r"<(?:\w+:)?(?:rss|feed)[\s>]", re.IGNORECASE)
 
 
-def _strip_ns(tag):
+def _strip_ns(tag: str) -> str:
     """Remove XML namespace prefix from a tag."""
     return re.sub(r"\{[^}]+\}", "", tag)
 
 
-def _handle_xml(raw_body):
+def _handle_xml(raw_body: str) -> str:
     """Parse XML — render RSS/Atom feeds as markdown, else fenced block."""
     # Sniff for feed tags before expensive parse — most XML isn't RSS/Atom
     if not _FEED_SNIFF_RE.search(raw_body[:500]):
@@ -136,7 +137,7 @@ def _handle_xml(raw_body):
     return f"```xml\n{raw_body}\n```"
 
 
-def _find_child_text(element, local_name):
+def _find_child_text(element: ET.Element, local_name: str) -> str:
     """Find text of a direct child by local name, ignoring namespace."""
     for child in element:
         if _strip_ns(child.tag).lower() == local_name.lower():
@@ -144,7 +145,7 @@ def _find_child_text(element, local_name):
     return ""
 
 
-def _find_child_attr(element, local_name, attr):
+def _find_child_attr(element: ET.Element, local_name: str, attr: str) -> str:
     """Find an attribute of a direct child by local name, ignoring namespace."""
     for child in element:
         if _strip_ns(child.tag).lower() == local_name.lower():
@@ -152,7 +153,7 @@ def _find_child_attr(element, local_name, attr):
     return ""
 
 
-_RSS_CONFIG = {
+_RSS_CONFIG: dict[str, Any] = {
     "container_tag": "channel",
     "item_tag": "item",
     "subtitle_tag": "description",
@@ -160,7 +161,7 @@ _RSS_CONFIG = {
     "link_mode": "text",
 }
 
-_ATOM_CONFIG = {
+_ATOM_CONFIG: dict[str, Any] = {
     "container_tag": None,
     "item_tag": "entry",
     "subtitle_tag": "subtitle",
@@ -169,11 +170,11 @@ _ATOM_CONFIG = {
 }
 
 
-def _render_feed(root, config):
+def _render_feed(root: ET.Element, config: dict[str, Any]) -> str:
     """Render RSS or Atom feed as markdown using a format config."""
     # RSS wraps items in <channel>; Atom uses root directly
     if config["container_tag"]:
-        container = None
+        container: ET.Element | None = None
         for child in root:
             if _strip_ns(child.tag).lower() == config["container_tag"]:
                 container = child
@@ -183,7 +184,7 @@ def _render_feed(root, config):
     else:
         container = root
 
-    lines = []
+    lines: list[str] = []
 
     title = _find_child_text(container, "title")
     if title:
@@ -222,7 +223,7 @@ def _render_feed(root, config):
 MAX_CSV_ROWS = 2000
 
 
-def _handle_csv(raw_body):
+def _handle_csv(raw_body: str) -> str:
     """Convert CSV to a markdown table (capped at MAX_CSV_ROWS data rows)."""
     try:
         reader = csv.reader(io.StringIO(raw_body))
@@ -248,7 +249,7 @@ def _handle_csv(raw_body):
     return "\n".join(lines)
 
 
-def handle(content_class, raw_body):
+def handle(content_class: str, raw_body: str) -> str | None:
     """Convert non-HTML body to LLM-ready markdown.
 
     Args:

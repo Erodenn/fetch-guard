@@ -1,5 +1,6 @@
 """Preflight check for /llms.txt at the domain root."""
 
+from typing import Any
 from urllib.parse import urlparse
 
 import requests
@@ -9,19 +10,19 @@ from .client import USER_AGENT
 MAX_TIMEOUT = 5
 
 
-def _domain_root(url):
+def _domain_root(url: str) -> str:
     """Extract the domain root URL (scheme + netloc)."""
     parsed = urlparse(url)
     return f"{parsed.scheme}://{parsed.netloc}"
 
 
-def is_root_url(url):
+def is_root_url(url: str) -> bool:
     """Check if the URL points to a domain root (no meaningful path)."""
     parsed = urlparse(url)
     return parsed.path in ("", "/")
 
 
-def check(url, timeout=5):
+def check(url: str, timeout: int = 5) -> dict[str, Any]:
     """GET for /llms.txt at the domain root.
 
     Args:

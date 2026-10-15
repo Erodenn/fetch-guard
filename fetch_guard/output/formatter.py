@@ -1,11 +1,12 @@
 """Assembles the status header, salted body, metadata, and links into the final stdout output."""
 
 import json
+from typing import Any
 
 from ..security import RISK_OK
 
 
-def format_output(result, salted_body):
+def format_output(result: dict[str, Any], salted_body: str) -> str:
     """Build the final output string from a pipeline result dict.
 
     Args:

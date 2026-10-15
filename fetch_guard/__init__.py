@@ -8,7 +8,7 @@ if not os.environ.get("PYTHONIOENCODING"):
     os.environ["PYTHONIOENCODING"] = "utf-8"
 
 
-def check_deps(extra=None):
+def check_deps(extra: dict[str, str] | None = None) -> None:
     """Check that required packages are importable, exit with helpful message if not.
 
     Args:

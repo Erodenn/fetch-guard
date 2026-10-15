@@ -13,7 +13,9 @@ from pathlib import Path
 SEVERITY_HIGH = "high"
 SEVERITY_MEDIUM = "medium"
 
-PATTERNS = [
+PatternEntry = tuple[str, re.Pattern[str], str]
+
+_CORE_PATTERNS: list[PatternEntry] = [
     # System prompt overrides
     (
         "system_prompt_override",
@@ -124,7 +126,7 @@ def _load_multilingual() -> list[tuple[str, re.Pattern[str], str]]:
         raise RuntimeError(f"multilingual_patterns.json not found at {path}") from e
     except json.JSONDecodeError as e:
         raise RuntimeError(f"multilingual_patterns.json is malformed: {e}") from e
-    result = []
+    result: list[PatternEntry] = []
     for phrase_key, entry in data.items():
         severity = entry["severity"]
         for lang_code, regex_str in entry["translations"].items():
@@ -136,10 +138,8 @@ def _load_multilingual() -> list[tuple[str, re.Pattern[str], str]]:
     return result
 
 
-PatternEntry = tuple[str, re.Pattern[str], str]
-
 MULTILINGUAL_PATTERNS: list[PatternEntry] = _load_multilingual()
-PATTERNS: list[PatternEntry] = PATTERNS + MULTILINGUAL_PATTERNS
+PATTERNS: list[PatternEntry] = _CORE_PATTERNS + MULTILINGUAL_PATTERNS
 
 # Filtered list of high-severity patterns only — used by decode-and-scan
 # (no point decoding base64/hex to check for medium-severity roleplay patterns)

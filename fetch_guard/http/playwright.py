@@ -1,11 +1,12 @@
 """Playwright-based JS rendering — headless Chromium fetch for JavaScript-heavy pages."""
 
 import contextlib
+from typing import Any
 
 from .client import error_result
 
 
-def fetch(url, timeout=180, headers=None):
+def fetch(url: str, timeout: int = 180, headers: dict[str, str] | None = None) -> dict[str, Any]:
     """Fetch a URL using headless Chromium via Playwright.
 
     Returns the same dict shape as fetch_client.fetch():

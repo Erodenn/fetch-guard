@@ -5,6 +5,8 @@ import codecs
 import re
 import secrets
 import urllib.parse
+from collections.abc import Callable
+from typing import Any
 
 from .normalize import normalize_for_scan
 from .patterns import HIGH_PATTERNS, PATTERNS, SEVERITY_HIGH
@@ -23,29 +25,29 @@ _HEX_RE = re.compile(r"(?:[0-9a-fA-F]{2}){20,}")
 _PERCENT_RE = re.compile(r"(?:%[0-9a-fA-F]{2}){3,}")
 
 
-def generate_salt():
+def generate_salt() -> str:
     """Return an 8-char random hex string."""
     return secrets.token_hex(4)
 
 
-def wrap_content(text, salt):
+def wrap_content(text: str, salt: str) -> str:
     """Wrap text in session-salted fetch-content tags."""
     return f"<fetch-content-{salt}>\n{text}\n</fetch-content-{salt}>"
 
 
-def _snippet(text, match):
+def _snippet(text: str, match: re.Match[str]) -> str:
     """Extract a context snippet around a regex match."""
     start = max(0, match.start() - CONTEXT_CHARS)
     end = min(len(text), match.end() + CONTEXT_CHARS)
     return text[start:end].replace("\n", " ").strip()
 
 
-def _rot13(text):
+def _rot13(text: str) -> str:
     """Decode ROT13-encoded text. ASCII letters rotate; non-ASCII pass through unchanged."""
     return codecs.encode(text, "rot_13")
 
 
-def _decode_base64(candidate):
+def _decode_base64(candidate: str) -> str:
     """Try to decode a base64 candidate to UTF-8 text."""
     try:
         return base64.b64decode(candidate).decode("utf-8", errors="ignore")
@@ -53,7 +55,7 @@ def _decode_base64(candidate):
         return ""
 
 
-def _decode_hex(candidate):
+def _decode_hex(candidate: str) -> str:
     """Try to decode a hex candidate to UTF-8 text."""
     try:
         return bytes.fromhex(candidate).decode("utf-8", errors="ignore")
@@ -61,7 +63,7 @@ def _decode_hex(candidate):
         return ""
 
 
-def _decode_url(candidate):
+def _decode_url(candidate: str) -> str:
     """Decode a URL percent-encoded candidate to UTF-8 text."""
     try:
         return urllib.parse.unquote(candidate, errors="ignore")
@@ -69,12 +71,17 @@ def _decode_url(candidate):
         return ""
 
 
-def _scan_decoded(text, candidates_regex, decoder_fn, prefix):
+def _scan_decoded(
+    text: str,
+    candidates_regex: re.Pattern[str],
+    decoder_fn: Callable[[str], str],
+    prefix: str,
+) -> list[dict[str, str]]:
     """Find encoded candidates in text, decode each, scan with HIGH patterns.
 
     Returns list of match dicts with prefixed pattern names.
     """
-    matches = []
+    matches: list[dict[str, str]] = []
     for candidate_match in candidates_regex.finditer(text):
         candidate = candidate_match.group()
         decoded = decoder_fn(candidate)
@@ -93,7 +100,7 @@ def _scan_decoded(text, candidates_regex, decoder_fn, prefix):
     return matches
 
 
-def scan(text):
+def scan(text: str) -> dict[str, Any]:
     """Scan text for injection patterns.
 
     Four-phase scan:
@@ -106,10 +113,10 @@ def scan(text):
         risk: "OK", "MEDIUM", or "HIGH"
         matches: list of {pattern, severity, snippet}
     """
-    matches = []
+    matches: list[dict[str, str]] = []
 
     # Phase 1: Scan original text with all patterns
-    original_hits = {}  # name → list of match positions
+    original_hits: dict[str, set[tuple[int, int]]] = {}  # name → list of match positions
     for name, pattern, severity in PATTERNS:
         for match in pattern.finditer(text):
             matches.append(
@@ -163,7 +170,7 @@ def scan(text):
     return _risk_from_matches(matches)
 
 
-def _risk_from_matches(matches):
+def _risk_from_matches(matches: list[dict[str, str]]) -> dict[str, Any]:
     """Determine risk level from a list of match dicts."""
     if not matches:
         return {"risk": RISK_OK, "matches": []}
@@ -171,14 +178,14 @@ def _risk_from_matches(matches):
     return {"risk": risk, "matches": matches}
 
 
-def scan_metadata(metadata_dict):
+def scan_metadata(metadata_dict: dict[str, Any]) -> dict[str, Any]:
     """Scan metadata string fields for injection patterns.
 
     Each match's pattern name is prefixed with "metadata:{field}:" to
     indicate which field the injection was found in.
     Returns {risk, matches} with the same structure as scan().
     """
-    all_matches = []
+    all_matches: list[dict[str, str]] = []
     for field, value in metadata_dict.items():
         if not isinstance(value, str) or not value:
             continue
@@ -194,7 +201,7 @@ def scan_metadata(metadata_dict):
     return _risk_from_matches(all_matches)
 
 
-def merge_scan_results(results):
+def merge_scan_results(results: list[dict[str, Any]]) -> dict[str, Any]:
     """Merge a list of scan result dicts. Risk level is the highest across all."""
     all_matches = [m for r in results for m in r["matches"]]
     return _risk_from_matches(all_matches)

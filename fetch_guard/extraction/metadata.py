@@ -3,10 +3,12 @@
 Uses extruct for JSON-LD and Open Graph, BeautifulSoup for plain meta tags.
 """
 
+from typing import Any, cast
+
 from bs4 import BeautifulSoup
 
 
-def null_metadata():
+def null_metadata() -> dict[str, Any]:
     """Return the unified schema with all fields set to None."""
     return {
         "title": None,
@@ -18,7 +20,7 @@ def null_metadata():
     }
 
 
-def _from_json_ld(items):
+def _from_json_ld(items: list[Any]) -> dict[str, Any]:
     """Extract metadata from JSON-LD entries."""
     result = {}
     for item in items:
@@ -57,7 +59,7 @@ def _from_json_ld(items):
     return result
 
 
-def _from_opengraph(items):
+def _from_opengraph(items: list[Any]) -> dict[str, Any]:
     """Extract metadata from extruct Open Graph output.
 
     extruct returns OG data as: [{"properties": [["og:title", "value"], ...], ...}]
@@ -87,13 +89,13 @@ def _from_opengraph(items):
     return result
 
 
-def _from_metatags(html, soup=None):
+def _from_metatags(html: str, soup: BeautifulSoup | None = None) -> dict[str, Any]:
     """Extract metadata from HTML meta tags using BeautifulSoup."""
     result = {}
     if soup is None:
         soup = BeautifulSoup(html, "html.parser")
     for tag in soup.find_all("meta"):
-        name = (tag.get("name") or "").lower()
+        name = cast(str, tag.get("name") or "").lower()
         content = tag.get("content", "")
         if not content:
             continue
@@ -108,7 +110,7 @@ def _from_metatags(html, soup=None):
     return result
 
 
-def extract(html, soup=None):
+def extract(html: str, soup: BeautifulSoup | None = None) -> dict[str, Any]:
     """Extract structured metadata from HTML.
 
     Args:

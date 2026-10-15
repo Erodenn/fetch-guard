@@ -1,5 +1,7 @@
 """HTTP fetch layer — requests wrapper with timeout, User-Agent, and redirect handling."""
 
+from typing import Any
+
 import requests
 
 USER_AGENT = "Mozilla/5.0 (compatible; FetchGuard/1.0)"
@@ -8,7 +10,7 @@ BROWSER_USER_AGENT = (
 )
 
 
-def error_result(url, error):
+def error_result(url: str, error: str) -> dict[str, Any]:
     """Build a standard error result dict."""
     return {
         "status_code": None,
@@ -19,7 +21,12 @@ def error_result(url, error):
     }
 
 
-def fetch(url, timeout=180, user_agent=None, headers=None):
+def fetch(
+    url: str,
+    timeout: int = 180,
+    user_agent: str | None = None,
+    headers: dict[str, str] | None = None,
+) -> dict[str, Any]:
     """Fetch a URL and return the result.
 
     Returns a dict with:

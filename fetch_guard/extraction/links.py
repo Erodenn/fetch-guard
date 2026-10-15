@@ -1,12 +1,13 @@
 """External link extraction from HTML."""
 
 from collections import defaultdict
+from typing import cast
 from urllib.parse import urlparse
 
 from bs4 import BeautifulSoup
 
 
-def _is_external(href, source_domain):
+def _is_external(href: str, source_domain: str) -> bool:
     """Check if a URL is external (different domain from source)."""
     try:
         parsed = urlparse(href)
@@ -19,14 +20,14 @@ def _is_external(href, source_domain):
     return parsed.netloc.lower() != source_domain.lower()
 
 
-def _parse_links(html, source_url, soup=None):
+def _parse_links(html: str, source_url: str, soup: BeautifulSoup | None = None) -> list[tuple[str, str, str]]:
     """Parse all external links from HTML. Returns list of (url, anchor, domain) tuples."""
     source_domain = urlparse(source_url).netloc
     if soup is None:
         soup = BeautifulSoup(html, "html.parser")
     links = []
     for a in soup.find_all("a", href=True):
-        href = a["href"]
+        href = cast(str, a["href"])
         if not _is_external(href, source_domain):
             continue
         anchor = a.get_text(strip=True) or ""
@@ -35,14 +36,14 @@ def _parse_links(html, source_url, soup=None):
     return links
 
 
-def extract_domains(html, source_url, soup=None):
+def extract_domains(html: str, source_url: str, soup: BeautifulSoup | None = None) -> list[str]:
     """Return a sorted list of unique external domains from HTML links."""
     links = _parse_links(html, source_url, soup=soup)
     domains = {domain for _, _, domain in links}
     return sorted(domains)
 
 
-def extract_full(html, source_url, soup=None):
+def extract_full(html: str, source_url: str, soup: BeautifulSoup | None = None) -> dict[str, list[dict[str, str]]]:
     """Return external links grouped by domain.
 
     Returns a dict: {domain: [{url, anchor}, ...], ...}

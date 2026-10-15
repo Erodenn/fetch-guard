@@ -1,7 +1,7 @@
 """trafilatura wrapper — extracts article body from HTML as clean markdown."""
 
 
-def extract(html):
+def extract(html: str) -> str | None:
     """Extract article content from HTML as markdown.
 
     Returns markdown string or None if extraction fails.

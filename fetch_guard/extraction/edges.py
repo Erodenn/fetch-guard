@@ -1,6 +1,7 @@
 """Edge case detection — classifies fetch results for bot blocks, paywalls, and login walls."""
 
 import re
+from typing import Any
 
 # Edge type constants
 EDGE_BOT_BLOCK = "bot_block"
@@ -53,7 +54,7 @@ _LOGIN_URL_PATTERNS = re.compile(
 _BOT_BLOCK_STATUSES = {401, 403, 429, 503, 999}
 
 
-def detect(fetch_result):
+def detect(fetch_result: dict[str, Any]) -> dict[str, Any]:
     """Classify a fetch result for edge case conditions.
 
     Args:

@@ -16,7 +16,7 @@ check_deps(extra={"mcp": "mcp"})
 # ---------------------------------------------------------------------------
 
 import warnings
-from typing import Literal
+from typing import Any, Literal
 
 from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
@@ -42,7 +42,7 @@ def fetch(
     links: Literal["domains", "full"] = "domains",
     auth_token: str | None = None,
     headers: dict[str, str] | None = None,
-) -> dict:
+) -> dict[str, Any]:
     """Fetch a URL and return clean, LLM-ready markdown with metadata and prompt injection scanning.
 
     Args:
@@ -99,7 +99,7 @@ def fetch(
     return result
 
 
-def main():
+def main() -> None:
     """Run the MCP server on stdio transport."""
     mcp.run(transport="stdio")
 
